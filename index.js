@@ -8,10 +8,10 @@ import { connectToDatabase } from "./utils/db.js";
 dotenv.config();
 
 const start = async () => {
-    const prisma = new PrismaClient()
     const app = Fastify();
 
     const PORT = process.env.PORT
+
 
     await registerRoutes(app);
     await connectToDatabase();
