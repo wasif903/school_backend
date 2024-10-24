@@ -15,4 +15,4 @@ const validateData = (schema, data) => {
     return { value };
 };
 
-module.exports = validateData;
+export default validateData
