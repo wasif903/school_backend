@@ -15,9 +15,26 @@ datasource db {
 }
 
 model AdminSchema {
-  id      Int    @id @default(autoincrement())
-  name    String
-  email   String @unique
-  phone   String
-  picture String @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  phone    String
+  password String
+  picture  String @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
+}
+
+model Class {
+  id          Int     @id @default(autoincrement())
+  classNumber Int     @unique
+  grades      Grade[]
+}
+
+model Grade {
+  id              Int    @id @default(autoincrement())
+  gradeLetter     String
+  studentCapacity Int
+  classId         Int
+  class           Class  @relation(fields: [classId], references: [id])
+
+  @@unique([gradeLetter, classId])
 }
