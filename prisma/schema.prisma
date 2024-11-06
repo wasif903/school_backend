@@ -15,12 +15,23 @@ datasource db {
 }
 
 model AdminSchema {
-  id       Int    @id @default(autoincrement())
+  id       Int      @id @default(autoincrement())
   name     String
-  email    String @unique
+  email    String   @unique
   phone    String
   password String
-  picture  String @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
+  picture  String   @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
+  class    Branch[]
+}
+
+model Branch {
+  id      Int         @id @default(autoincrement())
+  name    String
+  address String
+  adminId Int
+  admin   AdminSchema @relation(fields: [adminId], references: [id])
+
+  @@unique([name, address])
 }
 
 model Class {
