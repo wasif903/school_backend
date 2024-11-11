@@ -30,6 +30,7 @@ model Branch {
   address String
   adminId Int
   admin   AdminSchema @relation(fields: [adminId], references: [id])
+  classes Class[]
 
   @@unique([name, address])
 }
@@ -37,6 +38,8 @@ model Branch {
 model Class {
   id          Int     @id @default(autoincrement())
   classNumber Int     @unique
+  branchId    Int
+  branch      Branch  @relation(fields: [branchId], references: [id])
   grades      Grade[]
 }
 
@@ -46,6 +49,7 @@ model Grade {
   studentCapacity Int
   classId         Int
   class           Class  @relation(fields: [classId], references: [id])
-
+  
   @@unique([gradeLetter, classId])
 }
+
