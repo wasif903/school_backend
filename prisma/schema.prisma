@@ -25,22 +25,25 @@ model AdminSchema {
 }
 
 model Branch {
-  id      Int         @id @default(autoincrement())
-  name    String
-  address String
-  adminId Int
-  admin   AdminSchema @relation(fields: [adminId], references: [id])
-  classes Class[]
+  id           Int           @id @default(autoincrement())
+  name         String
+  address      String
+  adminId      Int
+  admin        AdminSchema   @relation(fields: [adminId], references: [id])
+  classes      Class[]
+  feeStructure FeeStructure?
 
   @@unique([name, address])
+  Parent Parent[]
 }
 
 model Class {
-  id          Int     @id @default(autoincrement())
-  classNumber Int     @unique
+  id          Int       @id @default(autoincrement())
+  classNumber Int       @unique
   branchId    Int
-  branch      Branch  @relation(fields: [branchId], references: [id])
+  branch      Branch    @relation(fields: [branchId], references: [id])
   grades      Grade[]
+  students    Student[]
 }
 
 model Grade {
@@ -49,7 +52,76 @@ model Grade {
   studentCapacity Int
   classId         Int
   class           Class  @relation(fields: [classId], references: [id])
-  
+
   @@unique([gradeLetter, classId])
 }
 
+model Parent {
+  id       Int       @id @default(autoincrement())
+  name     String
+  email    String    @unique
+  phone    String
+  students Student[]
+  branchId Int
+  branch Branch @relation(fields: [branchId], references: [id])
+}
+
+model Student {
+  id       Int       @id @default(autoincrement())
+  name     String
+  age      Int
+  parentId Int
+  parent   Parent    @relation(fields: [parentId], references: [id])
+  classId  Int
+  class    Class     @relation(fields: [classId], references: [id])
+  payments Payment[]
+
+  FeePayment FeePayment[]
+}
+
+model FeeStructure {
+  id       Int      @id @default(autoincrement())
+  amount   Float
+  dueDate  DateTime
+  branchId Int      @unique
+  branch   Branch   @relation(fields: [branchId], references: [id])
+
+  Payment Payment[]
+
+  FeePayment FeePayment[]
+}
+
+model Payment {
+  id             Int           @id @default(autoincrement())
+  month          DateTime
+  amount         Float
+  status         PaymentStatus
+  studentId      Int
+  student        Student       @relation(fields: [studentId], references: [id])
+  feeStructureId Int
+  feeStructure   FeeStructure  @relation(fields: [feeStructureId], references: [id])
+
+  @@unique([month, studentId]) // Ensures one payment record per student per month
+}
+
+
+model FeePayment {
+  id            Int         @id @default(autoincrement())
+  student       Student     @relation(fields: [studentId], references: [id])
+  studentId     Int
+  feeStructure  FeeStructure @relation(fields: [feeStructureId], references: [id])
+  feeStructureId Int
+  month         String      // e.g., "January", "February"
+  year          Int         // e.g., 2024
+  isPaid        Boolean     @default(false)
+  paidAt        DateTime?   // Records the date of payment
+  
+  @@unique([studentId, month, year]) // Ensures one payment per student per month/year
+}
+
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  PARTIAL
+}
