@@ -9,6 +9,6 @@ export const registerRoutes = async (fastify) => {
     fastify.register(authRoutes, { prefix: prefix })
     fastify.register(branchRoutes, { prefix: prefix.concat('/branch') })
     fastify.register(ClassRoutes, { prefix: prefix.concat('/class') })
-    fastify.register(ParentRoutes, { prefix: prefix.concat('/') })
+    fastify.register(ParentRoutes, { prefix: prefix.concat('/admission') })
 }
 

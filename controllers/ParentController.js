@@ -10,7 +10,6 @@ const HandleNewAdmission = async (req, reply) => {
       return reply.status(400).send({ message: "Branch Id is required!" });
     }
 
-    // Parent Validation Schema
     const parentSchema = Joi.object({
       firstName: Joi.string().required().min(3),
       lastName: Joi.string().required().min(3),
@@ -34,6 +33,7 @@ const HandleNewAdmission = async (req, reply) => {
             dob: Joi.string().required(),
             gender: Joi.string().required(),
             classId: Joi.number().required(),
+            gradeId: Joi.number().required(),
             noOfSibling: Joi.number().required(),
             hasSiblingsEnrolled: Joi.boolean().required(),
             feeCards: Joi.array().items(
@@ -41,7 +41,9 @@ const HandleNewAdmission = async (req, reply) => {
                 items: Joi.array().items(
                   Joi.object({
                     feeType: Joi.string().required(),
-                    amount: Joi.number().required()
+                    amount: Joi.number().required(),
+                    paymentType: Joi.string().required(),
+                    dueDate: Joi.string().required()
                   })
                 )
               })
@@ -74,10 +76,10 @@ const HandleNewAdmission = async (req, reply) => {
       students
     } = value;
 
-    // Check if parent already exists
-    const existingParent = await prisma.parent.findUnique({
+    const existingParent = await prisma.parent.findFirst({
       where: {
-        cnic
+        cnic,
+        branchId: parseInt(branchId)
       }
     });
 
@@ -87,72 +89,71 @@ const HandleNewAdmission = async (req, reply) => {
         .send({ message: "Parent already exists with this CNIC." });
     }
 
-    // Create Parent
-    const newParent = await prisma.parent.create({
-      data: {
-        branchId: parseInt(branchId),
-        firstName,
-        lastName,
-        cnic,
-        occupation,
-        companyName,
-        salary,
-        email,
-        phone,
-        houseNumber,
-        buildingName,
-        area,
-        block,
-        city
-      }
-    });
-
-    // Process and Create Students, FeeCards, and FeeItems
-    const studentsData = await Promise.all(
-      students.map(async (student) => {
-        const { feeCards, ...studentData } = student;
-
-        // Create Student
-        const newStudent = await prisma.student.create({
-          data: {
-            ...studentData,
-            parentId: newParent.id
-          }
-        });
-
-        // Create FeeCards and FeeItems for the student
-        if (feeCards) {
-          await Promise.all(
-            feeCards.map(async (feeCard) => {
-              const { items } = feeCard;
-
-              const newFeeCard = await prisma.feeCard.create({
-                data: {
-                  studentId: newStudent.id
-                }
-              });
-
-              if (items) {
-                await prisma.feeItem.createMany({
-                  data: items.map((item) => ({
-                    ...item,
-                    feeCardId: newFeeCard.id,
-                    status: "unpaid" // Set default status
-                  }))
-                });
-              }
-            })
-          );
+    const result = await prisma.$transaction(async prisma => {
+      const newParent = await prisma.parent.create({
+        data: {
+          branchId: parseInt(branchId),
+          firstName,
+          lastName,
+          cnic,
+          occupation,
+          companyName,
+          salary,
+          email,
+          phone,
+          houseNumber,
+          buildingName,
+          area,
+          block,
+          city
         }
+      });
 
-        return newStudent;
-      })
-    );
+      const studentsData = await Promise.all(
+        students.map(async student => {
+          const { feeCards, ...studentData } = student;
+
+          const newStudent = await prisma.student.create({
+            data: {
+              ...studentData,
+              parentId: newParent.id
+            }
+          });
+
+          if (feeCards) {
+            await Promise.all(
+              feeCards.map(async feeCard => {
+                const { items } = feeCard;
+
+                const newFeeCard = await prisma.feeCard.create({
+                  data: {
+                    studentId: newStudent.id
+                  }
+                });
+
+                if (items) {
+                  await prisma.feeItem.createMany({
+                    data: items.map(item => ({
+                      ...item,
+                      feeCardId: newFeeCard.id
+                    }))
+                  });
+                }
+              })
+            );
+          }
+
+          return newStudent;
+        })
+      );
+
+      return { parent: newParent, students: studentsData };
+    });
 
     reply.status(200).send({
       message: "Parent and students created successfully.",
-      parent: newParent,
-      students: studentsData
+      parent: result.parent,
+      students: result.students
     });
   } catch (error) {
     console.error(error);
@@ -160,60 +161,157 @@ const HandleNewAdmission = async (req, reply) => {
   }
 };
 
-export { HandleNewAdmission };
+const HandleGetBranchParents = async (req, reply) => {
+  try {
+    const { branchId } = req.params;
+    const { page = 1, limit = 10, search = "" } = req.query;
+
+    if (!branchId || isNaN(parseInt(branchId))) {
+      return reply.status(400).send({ message: "Valid Branch ID is required!" });
+    }
+
+    const branchIdInt = parseInt(branchId); 
+
+    const pageNumber = parseInt(page);
+    const pageSize = parseInt(limit);
+    if (isNaN(pageNumber) || pageNumber <= 0 || isNaN(pageSize) || pageSize <= 0) {
+      return reply.status(400).send({ message: "Page and limit must be positive integers." });
+    }
+
+    const offset = (pageNumber - 1) * pageSize;
+
+    const filters = {
+      where: {
+        branchId: branchIdInt, 
+        AND: [],
+      },
+      skip: offset,
+      take: pageSize,
+    };
+
+    if (search) {
+      filters.where.AND.push({
+        OR: [
+          { firstName: { contains: search, mode: 'insensitive' } }, 
+          { lastName: { contains: search, mode: 'insensitive' } }, 
+          { cnic: { contains: search, mode: 'insensitive' } }, 
+        ],
+      });
+    }
+
+    const parents = await prisma.parent.findMany(filters);
+
+    const totalCount = await prisma.parent.count({
+      where: {
+        branchId: branchIdInt,  
+        AND: filters.where.AND,
+      },
+    });
+
+    reply.status(200).send({
+      message: "Branch parents retrieved successfully.",
+      data: parents,
+      pagination: {
+        totalItems: totalCount,
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    reply.status(500).send({ message: "Internal Server Error" });
+  }
+};
+
+
+const HandleGetStudentData = async (req, reply) => {
+  try {
+    const { classId, gradeId, studentName, studentId } = req.query;
+    const { page = 1, limit = 10 } = req.query;
+
+    const pageNumber = parseInt(page);
+    const pageSize = parseInt(limit);
+    if (isNaN(pageNumber) || pageNumber <= 0 || isNaN(pageSize) || pageSize <= 0) {
+      return reply.status(400).send({ message: "Page and limit must be positive integers." });
+    }
+
+    const offset = (pageNumber - 1) * pageSize;
+
+    const filters = {
+      where: {
+        AND: [],
+      },
+      skip: offset,
+      take: pageSize,
+    };
+
+    if (classId) {
+      filters.where.AND.push({ classId });
+    }
+
+    if (gradeId) {
+      filters.where.AND.push({ gradeId });
+    }
+
+    if (studentName) {
+      filters.where.AND.push({
+        OR: [
+          { firstName: { contains: studentName, mode: 'insensitive' } },
+          { lastName: { contains: studentName, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    if (studentId) {
+      filters.where.AND.push({ id: parseInt(studentId) });
+    }
+
+    const students = await prisma.student.findMany(filters);
+
+    const totalCount = await prisma.student.count({
+      where: {
+        AND: filters.where.AND,
+      },
+    });
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June", 
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const chartData = students.map(student => {
+      const months = monthNames.map((month, index) => {
+        return {
+          month: month,  
+          data: Math.floor(Math.random() * 100), 
+        };
+      });
+
+      return {
+        studentId: student.id,
+        fullName: `${student.firstName} ${student.lastName}`, 
+        classNumber: student.classId, 
+        gradeLetter: student.gradeId, 
+        chartData: months, 
+      };
+    });
+
+    reply.status(200).send({
+      message: "Student data retrieved successfully.",
+      data: chartData,
+      pagination: {
+        totalItems: totalCount,
+        currentPage: pageNumber,
+        totalPages: Math.ceil(totalCount / pageSize),
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    reply.status(500).send({ message: "Internal Server Error" });
+  }
+};
 
 
 
-// {
-//   "firstName": "John",
-//   "lastName": "Doe",
-//   "cnic": "12345-6789012-3",
-//   "occupation": "Teacher",
-//   "companyName": "School",
-//   "salary": 50000,
-//   "email": "john.doe@example.com",
-//   "phone": "1234567890",
-//   "houseNumber": "12",
-//   "buildingName": "Sunshine Apartments",
-//   "area": "Downtown",
-//   "block": "A",
-//   "city": "Metropolis",
-//   "students": [
-//       {
-//           "firstName": "Alice",
-//           "lastName": "Doe",
-//           "age": 10,
-//           "dob": "2014-05-10",
-//           "gender": "Female",
-//           "classId": 1,
-//           "noOfSibling": 1,
-//           "hasSiblingsEnrolled": true,
-//           "feeCards": [
-//               {
-//                   "items": [
-//                       { "feeType": "Tuition", "amount": 1000 },
-//                       { "feeType": "Books", "amount": 500 }
-//                   ]
-//               }
-//           ]
-//       },
-//       {
-//           "firstName": "Bob",
-//           "lastName": "Doe",
-//           "age": 12,
-//           "dob": "2012-05-10",
-//           "gender": "Male",
-//           "classId": 2,
-//           "noOfSibling": 1,
-//           "hasSiblingsEnrolled": true,
-//           "feeCards": [
-//               {
-//                   "items": [
-//                       { "feeType": "Tuition", "amount": 1500 },
-//                       { "feeType": "Sports Fee", "amount": 800 }
-//                   ]
-//               }
-//           ]
-//       }
-//   ]
-// }
+
+export { HandleNewAdmission, HandleGetBranchParents, HandleGetStudentData };

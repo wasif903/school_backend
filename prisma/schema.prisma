@@ -46,11 +46,12 @@ model Class {
 }
 
 model Grade {
-  id              Int    @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   gradeLetter     String
   studentCapacity Int
   classId         Int
-  class           Class  @relation(fields: [classId], references: [id])
+  class           Class     @relation(fields: [classId], references: [id])
+  Student         Student[]
 
   @@unique([gradeLetter, classId])
 }
@@ -88,6 +89,8 @@ model Student {
   parent              Parent    @relation(fields: [parentId], references: [id])
   classId             Int
   class               Class     @relation(fields: [classId], references: [id])
+  gradeId             Int
+  grade               Grade     @relation(fields: [gradeId], references: [id])
   noOfSibling         Int
   hasSiblingsEnrolled Boolean   @default(false)
   FeeCard             FeeCard[]
@@ -100,10 +103,17 @@ model FeeCard {
   items     FeeItem[]
 }
 
+enum PaymentType {
+  ONE_TIME
+  RECURRING
+}
+
 model FeeItem {
-  id        Int     @id @default(autoincrement())
-  feeType   String
-  amount    Int
-  feeCardId Int
-  feeCard   FeeCard @relation(fields: [feeCardId], references: [id])
+  id          Int         @id @default(autoincrement())
+  feeType     String
+  amount      Int
+  feeCardId   Int
+  paymentType PaymentType
+  dueDate     String
+  feeCard     FeeCard     @relation(fields: [feeCardId], references: [id])
 }
