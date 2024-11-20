@@ -2,7 +2,6 @@ import Joi from "joi";
 import prisma from "../utils/prisma.js";
 import validateData from "../utils/validator.js";
 
-
 const HandleCreateClass = async (req, reply) => {
   try {
     const schema = Joi.object({
@@ -71,10 +70,9 @@ const HandleCreateClass = async (req, reply) => {
   }
 };
 
-
 const HandleAddGradesToClass = async (req, reply) => {
   try {
-    const { id } = req.params; 
+    const { id } = req.params;
     const schema = Joi.object({
       branchId: Joi.number().integer().required().messages({
         "any.required": "Branch ID is required",
@@ -92,7 +90,7 @@ const HandleAddGradesToClass = async (req, reply) => {
             })
           })
         )
-        .min(1) 
+        .min(1)
         .required()
         .messages({
           "any.required": "grades array is required"
@@ -100,9 +98,9 @@ const HandleAddGradesToClass = async (req, reply) => {
     });
 
     const { error, value } = validateData(schema, req.body);
-    console.log(req.body)
-    console.log(error)
-    console.log(value)
+    console.log(req.body);
+    console.log(error);
+    console.log(value);
     if (error) {
       return reply
         .status(400)
@@ -116,15 +114,17 @@ const HandleAddGradesToClass = async (req, reply) => {
     });
 
     if (!existingClass) {
-      return reply.status(404).send({ message: "Class not found in this branch" });
+      return reply
+        .status(404)
+        .send({ message: "Class not found in this branch" });
     }
 
     const createGrades = await prisma.grade.createMany({
       data: grades.map(grade => ({
         ...grade,
-        classId: existingClass.id 
+        classId: existingClass.id
       })),
-      skipDuplicates: true 
+      skipDuplicates: true
     });
 
     reply.status(200).send({
@@ -210,7 +210,6 @@ const HandleBulkCreateClass = async (req, reply) => {
   }
 };
 
-
 const HandleCreateGrade = async (req, reply) => {
   try {
     const schema = Joi.object({
@@ -283,11 +282,13 @@ const HandleCreateGrade = async (req, reply) => {
   }
 };
 
-
-
 const HandleGetClasses = async (req, reply) => {
   try {
     const branchId = parseInt(req.query.branchId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const skip = (page - 1) * limit;
 
     const classes = await prisma.class.findMany({
       where: { branchId },
@@ -298,7 +299,9 @@ const HandleGetClasses = async (req, reply) => {
             studentCapacity: true
           }
         }
-      }
+      },
+      skip,
+      take: limit
     });
 
     const result = classes.map(classItem => {
@@ -315,13 +318,26 @@ const HandleGetClasses = async (req, reply) => {
       };
     });
 
-    reply.status(200).send(result);
+    const totalClasses = await prisma.class.count({
+      where: { branchId }
+    });
+
+    const totalPages = Math.ceil(totalClasses / limit);
+
+    reply.status(200).send({
+      classes: result,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalClasses,
+        limit
+      }
+    });
   } catch (error) {
     console.log(error);
     reply.status(500).send({ message: "Internal Server Error" });
   }
 };
-
 
 const HandleGetSingleClass = async (req, reply) => {
   try {
@@ -336,7 +352,9 @@ const HandleGetSingleClass = async (req, reply) => {
     });
 
     if (!singleClass) {
-      return reply.status(404).send({ message: "Class not found in this branch" });
+      return reply
+        .status(404)
+        .send({ message: "Class not found in this branch" });
     }
 
     reply.status(200).send(singleClass);
@@ -345,7 +363,6 @@ const HandleGetSingleClass = async (req, reply) => {
     reply.status(500).send({ message: "Internal Server Error" });
   }
 };
-
 
 export {
   HandleCreateClass,
