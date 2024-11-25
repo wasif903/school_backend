@@ -5,6 +5,8 @@ import { registerRoutes } from "./routes/index.js";
 import { connectToDatabase } from "./utils/db.js";
 // import fastifySocketIO from "";
 
+
+
 dotenv.config();
 
 const start = async () => {
