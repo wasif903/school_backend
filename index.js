@@ -6,6 +6,8 @@ import { connectToDatabase } from "./utils/db.js";
 // import fastifySocketIO from "";
 import fastifyCors from "@fastify/cors";
 
+
+
 dotenv.config();
 
 const start = async () => {

@@ -71,12 +71,16 @@ const HandleLogin = async (req, reply) => {
       })
     });
 
+    const validateData = (schema, data) => {
+      const { error, value } = schema.validate(data, { abortEarly: false });
+      return { error, value };
+    };
+
     const { error, value } = validateData(schema, req.body);
 
     if (error) {
-      return reply
-        .status(400)
-        .send({ message: error.details.map(e => e.message) });
+      const messages = error.details ? error.details.map(e => e.message) : ["Invalid data"];
+      return reply.status(400).send({ message: messages });
     }
 
     const { email, password } = value;
