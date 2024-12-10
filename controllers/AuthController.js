@@ -68,7 +68,8 @@ const HandleLogin = async (req, reply) => {
       }),
       password: Joi.string().required().messages({
         "any.required": "Password is required"
-      })
+      }),
+      branchId: Joi.number().required()
     });
 
     const validateData = (schema, data) => {
@@ -79,15 +80,27 @@ const HandleLogin = async (req, reply) => {
     const { error, value } = validateData(schema, req.body);
 
     if (error) {
-      const messages = error.details ? error.details.map(e => e.message) : ["Invalid data"];
-      return reply.status(400).send({ message: messages });
+      // const messages = error.details
+      //   ? error.details.map(e => e.message)
+      //   : ["Invalid data"];
+      return reply.status(400).send({ message: error });
     }
 
-    const { email, password } = value;
+    const { email, password, branchId } = value;
 
     const admin = await prisma.adminSchema.findUnique({
       where: { email }
     });
+
+    const findBranch = await prisma.branch.findFirst({
+      where: {
+        id: parseInt(branchId)
+      }
+    });
+
+    if (!findBranch) {
+      return reply.status(404).send({ message: "Invalid Request" });
+    }
 
     if (!admin || admin.password !== password) {
       return reply.status(401).send({ message: "Invalid email or password" });
@@ -100,7 +113,8 @@ const HandleLogin = async (req, reply) => {
         name: admin.name,
         email: admin.email,
         phone: admin.phone,
-        picture: admin.picture
+        picture: admin.picture,
+        branch: findBranch
       }
     });
   } catch (error) {
