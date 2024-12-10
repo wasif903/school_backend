@@ -5,7 +5,7 @@ import validateData from "../utils/validator.js";
 const HandleCreateClass = async (req, reply) => {
   try {
     const schema = Joi.object({
-      classNumber: Joi.number().max(2).required().messages({
+      classNumber: Joi.number().required().messages({
         "any.required": "Class number is required"
       }),
       branchId: Joi.number().integer().required().messages({
@@ -30,12 +30,11 @@ const HandleCreateClass = async (req, reply) => {
         })
     });
 
-    const { error, value } = validateData(schema, req.body);
+    const { error, value } = validateData(schema, req.body || {});
 
     if (error) {
-      return reply
-        .status(400)
-        .send({ message: error.details.map(e => e.message) });
+      console.error("Validation error object:", error);
+      return reply.status(400).send({ message: error });
     }
 
     const { classNumber, branchId, grades } = value;
@@ -65,10 +64,11 @@ const HandleCreateClass = async (req, reply) => {
       .status(200)
       .send({ message: "Class Created Successfully", class: createClass });
   } catch (error) {
-    console.log(error);
+    console.error("Unexpected error:", error);
     reply.status(500).send({ message: "Internal Server Error" });
   }
 };
+
 
 const HandleAddGradesToClass = async (req, reply) => {
   try {
