@@ -99,7 +99,7 @@ const HandleLogin = async (req, reply) => {
     });
 
     if (!findBranch) {
-      return reply.status(404).send({ message: "Invalid Request" });
+      return reply.status(404).send({ message: "Invalid Branch Id" });
     }
 
     if (!admin || admin.password !== password) {
