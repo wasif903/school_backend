@@ -296,7 +296,8 @@ const HandleGetClasses = async (req, reply) => {
         grades: {
           select: {
             id: true,
-            studentCapacity: true
+            studentCapacity: true,
+            gradeLetter: true,
           }
         }
       },
@@ -314,6 +315,8 @@ const HandleGetClasses = async (req, reply) => {
         id: classItem.id,
         classNumber: classItem.classNumber,
         gradesCount,
+        gradeLetter: classItem.grades.map(grade => grade.gradeLetter),
+        studentCapacity: classItem.grades.map(grade => grade.studentCapacity),
         totalCapacity
       };
     });
