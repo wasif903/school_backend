@@ -1,5 +1,5 @@
 import {
-    HandleAddGradesToClass,
+  HandleAddGradesToClass,
   HandleBulkCreateClass,
   HandleCreateClass,
   HandleCreateGrade,
