@@ -139,76 +139,168 @@ const HandleAddGradesToClass = async (req, reply) => {
 
 const HandleBulkCreateClass = async (req, reply) => {
   try {
+    // Validation schema
     const schema = Joi.array().items(
       Joi.object({
         branchId: Joi.number().integer().required().messages({
           "any.required": "Branch ID is required",
-          "number.base": "Branch ID must be a number"
+          "number.base": "Branch ID must be a number",
         }),
-        classNumber: Joi.number().max(2).required().messages({
-          "any.required": "class number is required",
-          "number.base": "class number must be a number"
+        classNumber: Joi.number().integer().required().messages({
+          "any.required": "Class number is required",
+          "number.base": "Class number must be a number",
         }),
         grades: Joi.array()
           .items(
             Joi.object({
               gradeLetter: Joi.string().required().messages({
-                "any.required": "grade letter is required",
-                "string.base": "grade letter must be a string"
+                "any.required": "Grade letter is required",
+                "string.base": "Grade letter must be a string",
               }),
               studentCapacity: Joi.number().integer().required().messages({
-                "any.required": "student capacity is required",
-                "number.base": "student capacity must be a number"
-              })
+                "any.required": "Student capacity is required",
+                "number.base": "Student capacity must be a number",
+              }),
             })
           )
-          .required()
           .min(1)
+          .required()
           .messages({
-            "array.min": "at least one grade is required for each class"
-          })
+            "array.min": "At least one grade is required for each class",
+          }),
       })
     );
 
-    const { error, value } = validateData(schema, req.body);
+    // Validate input
+    const { error, value } = validateData(schema, req.body || []); // Ensure req.body exists
 
     if (error) {
-      return reply
-        .status(400)
-        .send({ message: error.details.map(e => e.message) });
+      return reply.status(400).send({
+        message: error.details.map((e) => e.message),
+      });
     }
 
     const createdClasses = [];
-    await prisma.$transaction(async prisma => {
+
+    await prisma.$transaction(async (prisma) => {
       for (const { branchId, classNumber, grades } of value) {
-        const createdClass = await prisma.class.create({
-          data: { branchId, classNumber }
+        // Check if classNumber already exists
+        const existingClass = await prisma.class.findUnique({
+          where: { classNumber },
         });
 
+        if (existingClass) {
+          throw new Error(`Class number ${classNumber} already exists.`);
+        }
+
+        // Create class
+        const createdClass = await prisma.class.create({
+          data: { branchId, classNumber },
+        });
+
+        // Create grades
         const createdGrades = await prisma.grade.createMany({
-          data: grades.map(grade => ({
+          data: grades.map((grade) => ({
             ...grade,
-            classId: createdClass.id
+            classId: createdClass.id,
           })),
-          skipDuplicates: true
+          skipDuplicates: true,
         });
 
         createdClasses.push({
           class: createdClass,
-          gradesCreated: createdGrades.count
+          gradesCreated: createdGrades.count,
         });
       }
     });
 
+    // Success response
     reply.status(200).send({
       message: "Classes and grades created successfully",
-      createdClasses
+      createdClasses,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Error:", error.message || error);
+    if (error.message?.includes("already exists")) {
+      return reply.status(409).send({ message: error.message });
+    }
     reply.status(500).send({ message: "Internal Server Error" });
   }
 };
+
+
+// const HandleBulkCreateClass = async (req, reply) => {
+//   try {
+//     const schema = Joi.array().items(
+//       Joi.object({
+//         branchId: Joi.number().integer().required().messages({
+//           "any.required": "Branch ID is required",
+//           "number.base": "Branch ID must be a number"
+//         }),
+//         classNumber: Joi.number().max(2).required().messages({
+//           "any.required": "class number is required",
+//           "number.base": "class number must be a number"
+//         }),
+//         grades: Joi.array()
+//           .items(
+//             Joi.object({
+//               gradeLetter: Joi.string().required().messages({
+//                 "any.required": "grade letter is required",
+//                 "string.base": "grade letter must be a string"
+//               }),
+//               studentCapacity: Joi.number().integer().required().messages({
+//                 "any.required": "student capacity is required",
+//                 "number.base": "student capacity must be a number"
+//               })
+//             })
+//           )
+//           .required()
+//           .min(1)
+//           .messages({
+//             "array.min": "at least one grade is required for each class"
+//           })
+//       })
+//     );
+
+//     const { error, value } = validateData(schema, req.body);
+
+//     if (error) {
+//       return reply
+//         .status(400)
+//         .send({ message: error.details.map(e => e.message) });
+//     }
+
+//     const createdClasses = [];
+//     await prisma.$transaction(async prisma => {
+//       for (const { branchId, classNumber, grades } of value) {
+//         const createdClass = await prisma.class.create({
+//           data: { branchId, classNumber }
+//         });
+
+//         const createdGrades = await prisma.grade.createMany({
+//           data: grades.map(grade => ({
+//             ...grade,
+//             classId: createdClass.id
+//           })),
+//           skipDuplicates: true
+//         });
+
+//         createdClasses.push({
+//           class: createdClass,
+//           gradesCreated: createdGrades.count
+//         });
+//       }
+//     });
+
+//     reply.status(200).send({
+//       message: "Classes and grades created successfully",
+//       createdClasses
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     reply.status(500).send({ message: "Internal Server Error" });
+//   }
+// };
 
 const HandleCreateGrade = async (req, reply) => {
   try {
