@@ -9,9 +9,9 @@ import {
 
 export const ClassRoutes = async (fastify, options) => {
   fastify.post("/create-class", HandleCreateClass);
-  fastify.patch("/grades/add-grades/:id", HandleAddGradesToClass);
   fastify.post("/bulk-create-class", HandleBulkCreateClass);
   fastify.get("/get-classes", HandleGetClasses);
+  fastify.patch("/grades/add-grades/:id", HandleAddGradesToClass);
   fastify.get("/get-single-class/:id", HandleGetSingleClass);
   fastify.post("/grades/create-grades", HandleCreateGrade);
 };
