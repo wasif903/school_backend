@@ -5,8 +5,8 @@ import validateData from "../utils/validator.js";
 const HandleCreateClass = async (req, reply) => {
   try {
     const schema = Joi.object({
-      classNumber: Joi.number().required().messages({
-        "any.required": "Class number is required"
+      className: Joi.string().required().messages({
+        "any.required": "Class name is required"
       }),
       branchId: Joi.number().integer().required().messages({
         "any.required": "Branch ID is required"
@@ -37,10 +37,10 @@ const HandleCreateClass = async (req, reply) => {
       return reply.status(400).send({ message: error });
     }
 
-    const { classNumber, branchId, grades } = value;
+    const { className, branchId, grades } = value;
 
     const findClass = await prisma.class.findUnique({
-      where: { classNumber }
+      where: { className }
     });
 
     if (findClass) {
@@ -51,7 +51,7 @@ const HandleCreateClass = async (req, reply) => {
 
     const createClass = await prisma.class.create({
       data: {
-        classNumber,
+        className,
         branchId,
         grades: {
           create: grades
@@ -146,10 +146,7 @@ const HandleBulkCreateClass = async (req, reply) => {
           "any.required": "Branch ID is required",
           "number.base": "Branch ID must be a number",
         }),
-        classNumber: Joi.number().integer().required().messages({
-          "any.required": "Class number is required",
-          "number.base": "Class number must be a number",
-        }),
+        className: Joi.string().required(),
         grades: Joi.array()
           .items(
             Joi.object({
@@ -192,25 +189,25 @@ const HandleBulkCreateClass = async (req, reply) => {
     // Start transaction
     await prisma.$transaction(async (prisma) => {
       for (const item of value) {
-        const { branchId, classNumber, grades } = item;
+        const { branchId, className, grades } = item;
 
         // Ensure grades exists and is an array
         if (!grades || !Array.isArray(grades)) {
-          throw new Error(`Grades must be a non-empty array for class number ${classNumber}`);
+          throw new Error(`Grades must be a non-empty array for class number ${className}`);
         }
 
-        // Check if classNumber already exists
+        // Check if className already exists
         const existingClass = await prisma.class.findUnique({
-          where: { classNumber },
+          where: { className },
         });
 
         if (existingClass) {
-          throw new Error(`Class number ${classNumber} already exists.`);
+          throw new Error(`Class number ${className} already exists.`);
         }
 
         // Create class
         const createdClass = await prisma.class.create({
-          data: { branchId, classNumber },
+          data: { branchId, className },
         });
 
         // Create grades
@@ -348,7 +345,7 @@ const HandleGetClasses = async (req, reply) => {
       );
       return {
         id: classItem.id,
-        classNumber: classItem.classNumber,
+        className: classItem.className,
         gradesCount,
         gradeLetter: classItem.grades.map(grade => grade.gradeLetter),
         studentCapacity: classItem.grades.map(grade => grade.studentCapacity),

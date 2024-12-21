@@ -291,7 +291,7 @@ const HandleGetStudentData = async (req, reply) => {
       return {
         studentId: student.id,
         fullName: `${student.firstName} ${student.lastName}`, 
-        classNumber: student.classId, 
+        className: student.classId, 
         gradeLetter: student.gradeId, 
         chartData: months, 
       };
