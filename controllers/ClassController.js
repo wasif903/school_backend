@@ -30,6 +30,8 @@ const HandleCreateClass = async (req, reply) => {
         })
     });
 
+    console.log("Request body:", req.body);
+
     const { error, value } = validateData(schema, req.body || {});
 
     if (error) {
@@ -68,7 +70,6 @@ const HandleCreateClass = async (req, reply) => {
     reply.status(500).send({ message: "Internal Server Error" });
   }
 };
-
 
 const HandleAddGradesToClass = async (req, reply) => {
   try {
