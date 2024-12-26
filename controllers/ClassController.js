@@ -71,6 +71,188 @@ const HandleCreateClass = async (req, reply) => {
   }
 };
 
+const HandleUpdateClass = async (req, reply) => {
+  try {
+    const { classId, branchId } = req.params;
+
+    if (!classId || !branchId) {
+      return reply.status(400).send({
+        message: 'Both class ID and branch ID are required',
+      });
+    }
+
+    // Validate branch and class association
+    const findClass = await prisma.class.findFirst({
+      where: {
+        id: parseInt(classId),
+        branchId: parseInt(branchId),
+      },
+    });
+
+    if (!findClass) {
+      return reply.status(404).send({
+        message: `Class with ID ${classId} not found in branch ${branchId}`,
+      });
+    }
+
+    const schema = Joi.object({
+      className: Joi.string().required(),
+      grades: Joi.array()
+        .items(
+          Joi.object({
+            id: Joi.number().optional(),
+            gradeLetter: Joi.string().required().messages({
+              'any.required': 'Grade letter is required',
+            }),
+            studentCapacity: Joi.number().required().messages({
+              'any.required': 'Student capacity is required',
+            }),
+          })
+        )
+        .min(1)
+        .required()
+        .messages({
+          'array.min': 'At least one grade is required',
+          'any.required': 'Grades are required',
+        }),
+    });
+
+    const { error, value } = validateData(schema, req.body);
+
+    if (error) {
+      return reply.status(400).send({ message: error });
+    }
+
+    const { className, grades } = value;
+
+    // Separate existing and new grades
+    const existingGrades = grades.filter((grade) => grade.id);
+    const newGrades = grades.filter((grade) => !grade.id);
+
+    // Update the class and grades
+    const updateClass = await prisma.class.update({
+      where: {
+        id: parseInt(classId),
+      },
+      data: {
+        className: className || findClass.className,
+        grades: {
+          update: existingGrades.map((grade) => ({
+            where: { id: grade.id },
+            data: {
+              gradeLetter: grade.gradeLetter,
+              studentCapacity: grade.studentCapacity,
+            },
+          })),
+          create: newGrades,
+        },
+      },
+      include: { grades: true },
+    });
+
+    reply.status(200).send({
+      message: 'Class updated successfully',
+      class: updateClass,
+    });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    reply.status(500).send({ message: 'Internal Server Error' });
+  }
+};
+
+// const HandleUpdateClass = async (req, reply) => {
+//   try {
+//     const { classId, branchId } = req.params;
+
+//     if (!classId) {
+//       return reply.status(400).send({ message: "Class ID is required" });
+//     }
+    
+//     if (!branchId) {
+//       return reply.status(400).send({ message: "Class ID is required" });
+//     }
+
+//     const findClass = await prisma.class.findFirst({
+//       where: { id: parseInt(classId) }
+//     });
+
+//     if (!findClass) {
+//       return reply.status(404).send({ message: `Class with ID ${classId} not found` });
+//     }
+    
+//     const findBranch = await prisma.branch.findFirst({
+//       where: { id: parseInt(branchId) }
+//     });
+
+//     if (!findBranch) {
+//       return reply.status(404).send({ message: `Branch with ID ${branchId} not found` });
+//     }
+
+//     const schema = Joi.object({
+// branchId: Joi.string().required(),
+//       className: Joi.string().required(),
+//       grades: Joi.array()
+//         .items(
+//           Joi.object({
+//             id: Joi.number().optional(), // Optional for existing grades
+//             gradeLetter: Joi.string().required().messages({
+//               "any.required": "Grade letter is required"
+//             }),
+//             studentCapacity: Joi.number().required().messages({
+//               "any.required": "Student capacity is required"
+//             })
+//           })
+//         )
+//         .min(1)
+//         .required()
+//         .messages({
+//           "array.min": "At least one grade is required",
+//           "any.required": "Grades are required"
+//         })
+//     });
+
+//     const { error, value } = validateData(schema, req.body);
+
+//     if (error) {
+//       const errorMessage = error.details.map((detail) => detail.message).join(', ');
+//       return reply.status(400).send({ message: errorMessage });
+//     }
+
+//     const { className, grades } = value;
+
+//     // Separate existing and new grades
+//     const existingGrades = grades.filter((grade) => grade.id);
+//     const newGrades = grades.filter((grade) => !grade.id);
+
+//     // Update the class and grades
+//     const updateClass = await prisma.class.update({
+//       where: { id: parseInt(classId), branchId: branchId },
+//       data: {
+//         className: className || findClass.className,
+//         grades: {
+//           update: existingGrades.map((grade) => ({
+//             where: { id: grade.id },
+//             data: {
+//               gradeLetter: grade.gradeLetter,
+//               studentCapacity: grade.studentCapacity
+//             }
+//           })),
+//           create: newGrades
+//         }
+//       },
+//       include: { grades: true }
+//     });
+
+//     reply
+//       .status(200)
+//       .send({ message: "Class updated successfully", class: updateClass });
+//   } catch (error) {
+//     console.error("Unexpected error:", error);
+//     reply.status(500).send({ message: "Internal Server Error" });
+//   }
+// };
+
+
 const HandleAddGradesToClass = async (req, reply) => {
   try {
     const { id } = req.params;
@@ -406,5 +588,6 @@ export {
   HandleCreateGrade,
   HandleGetClasses,
   HandleGetSingleClass,
-  HandleAddGradesToClass
+  HandleAddGradesToClass,
+  HandleUpdateClass
 };
