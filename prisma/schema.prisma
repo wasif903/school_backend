@@ -22,6 +22,26 @@ model AdminSchema {
   password String
   picture  String   @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
   class    Branch[]
+  Roles    Roles[]
+}
+
+model Roles {
+  id       Int         @id @default(autoincrement())
+  roleName String
+  username String
+  password String
+  adminId  Int
+  admin    AdminSchema @relation(fields: [adminId], references: [id])
+
+  branchId   Int
+  branch     Branch       @relation(fields: [branchId], references: [id])
+  Permission Permission[] @relation("RolePermissions")
+}
+
+model Permission {
+  id    Int     @id @default(autoincrement())
+  name  String
+  roles Roles[] @relation("RolePermissions")
 }
 
 model Branch {
@@ -32,6 +52,7 @@ model Branch {
   admin   AdminSchema @relation(fields: [adminId], references: [id])
   classes Class[]
   Parent  Parent[]
+  Roles   Roles[]
 
   @@unique([name, address])
 }

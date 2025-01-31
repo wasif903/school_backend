@@ -1,172 +1,8 @@
 import Joi from "joi";
 import prisma from "../utils/prisma.js";
-import validateData from "../utils/validator.js";
-import { parseMultipartFiles, saveUploadedFiles } from "../utils/fileUpload.js";
-
-import { promises as fs } from "fs";
-import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import sharp from "sharp";
 import SaveBase64Image from "../utils/Base64Converter.js";
 
-// const HandleNewAdmission = async (req, reply) => {
-//   try {
-//     const { branchId } = req.params;
-
-//     if (!branchId) {
-//       return reply.status(400).send({ message: "Branch Id is required!" });
-//     }
-
-//     const parentSchema = Joi.object({
-//       firstName: Joi.string().required().min(3),
-//       lastName: Joi.string().required().min(3),
-//       cnic: Joi.string().required(),
-//       occupation: Joi.string().required().min(3),
-//       companyName: Joi.string().required(),
-//       salary: Joi.number().required(),
-//       email: Joi.string().email().required(),
-//       phone: Joi.string().required().min(9).max(12),
-//       houseNumber: Joi.string().required(),
-//       buildingName: Joi.string().required(),
-//       area: Joi.string().required(),
-//       block: Joi.string().required(),
-//       city: Joi.string().required(),
-//       students: Joi.array()
-//         .items(
-//           Joi.object({
-//             firstName: Joi.string().required().min(3),
-//             lastName: Joi.string().required().min(3),
-//             age: Joi.number().required().min(3),
-//             dob: Joi.string().required(),
-//             gender: Joi.string().required(),
-//             classId: Joi.number().required(),
-//             gradeId: Joi.number().required(),
-//             noOfSibling: Joi.number().required(),
-//             hasSiblingsEnrolled: Joi.boolean().required(),
-//             feeCards: Joi.array().items(
-//               Joi.object({
-//                 items: Joi.array().items(
-//                   Joi.object({
-//                     feeType: Joi.string().required(),
-//                     amount: Joi.number().required(),
-//                     paymentType: Joi.string().required(),
-//                     dueDate: Joi.string().required()
-//                   })
-//                 )
-//               })
-//             )
-//           })
-//         )
-//         .min(1)
-//     });
-
-//     const { error, value } = validateData(parentSchema, req.body);
-
-//     if (error) {
-//       return reply.status(400).send({ message: error.details[0].message });
-//     }
-
-//     const {
-//       firstName,
-//       lastName,
-//       cnic,
-//       occupation,
-//       companyName,
-//       salary,
-//       email,
-//       phone,
-//       houseNumber,
-//       buildingName,
-//       area,
-//       block,
-//       city,
-//       students
-//     } = value;
-
-//     const existingParent = await prisma.parent.findFirst({
-//       where: {
-//         cnic,
-//         branchId: parseInt(branchId)
-//       }
-//     });
-
-//     if (existingParent) {
-//       return reply
-//         .status(400)
-//         .send({ message: "Parent already exists with this CNIC." });
-//     }
-
-//     const result = await prisma.$transaction(async prisma => {
-//       const newParent = await prisma.parent.create({
-//         data: {
-//           branchId: parseInt(branchId),
-//           firstName,
-//           lastName,
-//           cnic,
-//           occupation,
-//           companyName,
-//           salary,
-//           email,
-//           phone,
-//           houseNumber,
-//           buildingName,
-//           area,
-//           block,
-//           city
-//         }
-//       });
-
-//       const studentsData = await Promise.all(
-//         students.map(async student => {
-//           const { feeCards, ...studentData } = student;
-
-//           const newStudent = await prisma.student.create({
-//             data: {
-//               ...studentData,
-//               parentId: newParent.id
-//             }
-//           });
-
-//           if (feeCards) {
-//             await Promise.all(
-//               feeCards.map(async feeCard => {
-//                 const { items } = feeCard;
-
-//                 const newFeeCard = await prisma.feeCard.create({
-//                   data: {
-//                     studentId: newStudent.id
-//                   }
-//                 });
-
-//                 if (items) {
-//                   await prisma.feeItem.createMany({
-//                     data: items.map(item => ({
-//                       ...item,
-//                       feeCardId: newFeeCard.id
-//                     }))
-//                   });
-//                 }
-//               })
-//             );
-//           }
-
-//           return newStudent;
-//         })
-//       );
-
-//       return { parent: newParent, students: studentsData };
-//     });
-
-//     reply.status(200).send({
-//       message: "Parent and students created successfully.",
-//       parent: result.parent,
-//       students: result.students
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     reply.status(500).send({ message: "Internal Server Error" });
-//   }
-// };
 
 const HandleGetBranchParents = async (req, reply) => {
   try {
@@ -343,198 +179,6 @@ const HandleGetStudentData = async (req, reply) => {
   }
 };
 
-// const HandleNewAdmission = async (req, reply) => {
-//   try {
-//     const { branchId } = req.params;
-//     const data = req.body.data;
-
-//     console.log(data)
-
-//     if (!branchId) {
-//       return reply.status(400).send({ message: "Branch Id is required!" });
-//     }
-
-//     // Joi schema validation for parent and students
-//     const parentSchema = Joi.object({
-//       firstName: Joi.string().required().min(3),
-//       lastName: Joi.string().required().min(3),
-//       cnic: Joi.string().required(),
-//       occupation: Joi.string().required().min(3),
-//       companyName: Joi.string().required(),
-//       salary: Joi.number().required(),
-//       email: Joi.string().email().required(),
-//       phone: Joi.string().required().min(9).max(12),
-//       houseNumber: Joi.string().required(),
-//       buildingName: Joi.string().required(),
-//       area: Joi.string().required(),
-//       block: Joi.string().required(),
-//       city: Joi.string().required(),
-//       students: Joi.array()
-//         .items(
-//           Joi.object({
-//             firstName: Joi.string().required().min(3),
-//             lastName: Joi.string().required().min(3),
-//             age: Joi.number().required().min(3),
-//             dob: Joi.string().required(),
-//             gender: Joi.string().required(),
-//             classId: Joi.number().required(),
-//             gradeId: Joi.number().required(),
-//             noOfSibling: Joi.number().required(),
-//             hasSiblingsEnrolled: Joi.boolean().required(),
-//             feeCards: Joi.array().items(
-//               Joi.object({
-//                 items: Joi.array().items(
-//                   Joi.object({
-//                     feeType: Joi.string().required(),
-//                     amount: Joi.number().required(),
-//                     paymentType: Joi.string().required(),
-//                     dueDate: Joi.string().required(),
-//                   })
-//                 ),
-//               })
-//             ),
-//           })
-//         )
-//         .min(1),
-//     });
-
-//     const body = typeof data === "string" ? JSON.parse(data) : data;
-
-//     // Validate request body using the parent schema
-//     const { error, value } = validateData(parentSchema, body);
-
-//     if (error) {
-//       return reply.status(400).send({ message: error });
-//     }
-
-//     const {
-//       firstName,
-//       lastName,
-//       cnic,
-//       occupation,
-//       companyName,
-//       salary,
-//       email,
-//       phone,
-//       houseNumber,
-//       buildingName,
-//       area,
-//       block,
-//       city,
-//       students,
-//     } = value;
-
-//     await parseMultipartFiles(req, reply);
-
-//     const parentPicturePath = await saveUploadedFiles(
-//       req.files?.parentPicture,
-//       "parents"
-//     );
-//     const studentPicturePaths = await Promise.all(
-//       (req.files?.studentPictures || []).map((file) =>
-//         saveUploadedFiles(file, "students")
-//       )
-//     );
-
-//     const existingParent = await prisma.parent.findFirst({
-//       where: {
-//         cnic,
-//         branchId: parseInt(branchId),
-//       },
-//     });
-
-//     if (existingParent) {
-//       return reply
-//         .status(400)
-//         .send({ message: "Parent already exists with this CNIC." });
-//     }
-
-//     const result = await prisma.$transaction(async (prisma) => {
-//       const newParent = await prisma.parent.create({
-//         data: {
-//           branchId: parseInt(branchId),
-//           firstName,
-//           lastName,
-//           cnic,
-//           occupation,
-//           companyName,
-//           salary,
-//           email,
-//           phone,
-//           houseNumber,
-//           buildingName,
-//           area,
-//           block,
-//           city,
-//           picture: parentPicturePath,
-//         },
-//       });
-
-//       const studentsData = await Promise.all(
-//         students.map(async (student) => {
-//           const { feeCards, studentPictures, ...studentData } = student;
-
-//           const newStudent = await prisma.student.create({
-//             data: {
-//               ...studentData,
-//               parentId: newParent.id,
-//               picture: studentPicturePaths[0],
-//             },
-//           });
-
-//           if (feeCards) {
-//             await Promise.all(
-//               feeCards.map(async (feeCard) => {
-//                 const { items } = feeCard;
-
-//                 const newFeeCard = await prisma.feeCard.create({
-//                   data: {
-//                     studentId: newStudent.id,
-//                   },
-//                 });
-
-//                 if (items) {
-//                   await prisma.feeItem.createMany({
-//                     data: items.map((item) => ({
-//                       ...item,
-//                       feeCardId: newFeeCard.id,
-//                     })),
-//                   });
-//                 }
-//               })
-//             );
-//           }
-
-//           if (studentPictures && studentPictures.length > 0) {
-//             await Promise.all(
-//               studentPictures.map(async (filePath) => {
-//                 await prisma.document.create({
-//                   data: {
-//                     studentId: newStudent.id,
-//                     fileUrl: filePath,
-//                   },
-//                 });
-//               })
-//             );
-//           }
-//           return newStudent;
-//         })
-//       );
-
-//       return { parent: newParent, students: studentsData };
-//     });
-
-//     reply.status(200).send({
-//       message: "Parent and students created successfully.",
-//       parent: result.parent,
-//       students: result.students,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     reply.status(500).send({ message: "Internal Server Error" });
-//   }
-// };
-
 const HandleNewAdmission = async (req, reply) => {
   try {
     const { branchId } = req.params;
@@ -559,31 +203,33 @@ const HandleNewAdmission = async (req, reply) => {
       area: Joi.string().required(),
       block: Joi.string().required(),
       city: Joi.string().required(),
-      student: Joi.object({
-        firstName: Joi.string().required().min(3),
-        lastName: Joi.string().required().min(3),
-        age: Joi.number().required().min(3),
-        dob: Joi.string().required(),
-        picture: Joi.string(),
-        gender: Joi.string().required(),
-        classId: Joi.number().required(),
-        gradeId: Joi.number().required(),
-        noOfSibling: Joi.number().required(),
-        hasSiblingsEnrolled: Joi.boolean().required(),
-        Documents: Joi.array().items(Joi.string()),
-        feeCards: Joi.array().items(
-          Joi.object({
-            items: Joi.array().items(
-              Joi.object({
-                feeType: Joi.string().required(),
-                amount: Joi.number().required(),
-                paymentType: Joi.string().required(),
-                dueDate: Joi.string().required(),
-              })
-            ),
-          })
-        ),
-      }).required(),
+      students: Joi.array().items(
+        Joi.object({
+          firstName: Joi.string().required().min(3),
+          lastName: Joi.string().required().min(3),
+          age: Joi.number().required().min(3),
+          dob: Joi.string().required(),
+          picture: Joi.string(),
+          gender: Joi.string().required(),
+          classId: Joi.number().required(),
+          gradeId: Joi.number().required(),
+          noOfSibling: Joi.number().required(),
+          hasSiblingsEnrolled: Joi.boolean().required(),
+          Documents: Joi.array().items(Joi.string()),
+          feeCards: Joi.array().items(
+            Joi.object({
+              items: Joi.array().items(
+                Joi.object({
+                  feeType: Joi.string().required(),
+                  amount: Joi.number().required(),
+                  paymentType: Joi.string().required(),
+                  dueDate: Joi.string().required(),
+                })
+              ),
+            })
+          ),
+        })
+      ).required(),
     });
 
     const body = typeof data === "string" ? JSON.parse(data) : data;
@@ -611,7 +257,7 @@ const HandleNewAdmission = async (req, reply) => {
       area,
       block,
       city,
-      student,
+      students,
     } = value;
 
     // Handle base64 image saving
@@ -624,13 +270,17 @@ const HandleNewAdmission = async (req, reply) => {
       );
     }
 
-    const studentPicturePath = student.picture
-      ? await SaveBase64Image(
-          student.picture,
-          "students",
-          `${uuidv4()}_student.jpg`
-        )
-      : null;
+    const studentPicturePaths = await Promise.all(
+      students.map((student) =>
+        student.picture
+          ? SaveBase64Image(
+              student.picture,
+              "students",
+              `${uuidv4()}_student.jpg`
+            )
+          : null
+      )
+    );
 
     const existingParent = await prisma.parent.findFirst({
       where: {
@@ -645,23 +295,25 @@ const HandleNewAdmission = async (req, reply) => {
         .send({ message: "Parent already exists with this CNIC." });
     }
 
-    // Check if the classId and gradeId are valid
-    const validClass = await prisma.class.findUnique({
-      where: {
-        id: student.classId,
-      },
-    });
+    // Check if the classId and gradeId are valid for each student
+    for (const student of students) {
+      const validClass = await prisma.class.findUnique({
+        where: {
+          id: student.classId,
+        },
+      });
 
-    const validGrade = await prisma.grade.findUnique({
-      where: {
-        id: student.gradeId,
-      },
-    });
+      const validGrade = await prisma.grade.findUnique({
+        where: {
+          id: student.gradeId,
+        },
+      });
 
-    if (!validClass || !validGrade) {
-      return reply
-        .status(400)
-        .send({ message: "Invalid classId or gradeId provided." });
+      if (!validClass || !validGrade) {
+        return reply
+          .status(400)
+          .send({ message: "Invalid classId or gradeId provided." });
+      }
     }
 
     const result = await prisma.$transaction(async (prisma) => {
@@ -685,64 +337,72 @@ const HandleNewAdmission = async (req, reply) => {
         },
       });
 
-      const { feeCards, studentPictures, ...studentData } = student;
+      // Create the students
+      const studentsData = await Promise.all(
+        students.map(async (student, index) => {
+          const { feeCards, studentPictures, ...studentData } = student;
 
-      const newStudent = await prisma.student.create({
-        data: {
-          ...studentData,
-          parentId: newParent.id,
-          picture: studentPicturePath,
-        },
-      });
+          const newStudent = await prisma.student.create({
+            data: {
+              ...studentData,
+              parentId: newParent.id,
+              picture: studentPicturePaths[index], // Use the specific student's picture path
+            },
+          });
 
-      if (feeCards) {
-        await Promise.all(
-          feeCards.map(async (feeCard) => {
-            const { items } = feeCard;
+          if (feeCards) {
+            await Promise.all(
+              feeCards.map(async (feeCard) => {
+                const { items } = feeCard;
 
-            const newFeeCard = await prisma.feeCard.create({
-              data: {
-                studentId: newStudent.id,
-              },
-            });
+                const newFeeCard = await prisma.feeCard.create({
+                  data: {
+                    studentId: newStudent.id,
+                  },
+                });
 
-            if (items) {
-              await prisma.feeItem.createMany({
-                data: items.map((item) => ({
-                  ...item,
-                  feeCardId: newFeeCard.id,
-                })),
-              });
-            }
-          })
-        );
-      }
+                if (items) {
+                  await prisma.feeItem.createMany({
+                    data: items.map((item) => ({
+                      ...item,
+                      feeCardId: newFeeCard.id,
+                    })),
+                  });
+                }
+              })
+            );
+          }
 
-      if (studentPictures && studentPictures.length > 0) {
-        await Promise.all(
-          studentPictures.map(async (filePath) => {
-            await prisma.document.create({
-              data: {
-                studentId: newStudent.id,
-                fileUrl: filePath,
-              },
-            });
-          })
-        );
-      }
+          if (studentPictures && studentPictures.length > 0) {
+            await Promise.all(
+              studentPictures.map(async (filePath) => {
+                await prisma.document.create({
+                  data: {
+                    studentId: newStudent.id,
+                    fileUrl: filePath,
+                  },
+                });
+              })
+            );
+          }
 
-      return { parent: newParent, student: newStudent };
+          return newStudent;
+        })
+      );
+
+      return { parent: newParent, students: studentsData };
     });
 
     reply.status(200).send({
-      message: "Parent and student created successfully.",
+      message: "Parent and students created successfully.",
       parent: result.parent,
-      student: result.student,
+      students: result.students,
     });
   } catch (error) {
     console.error(error);
     reply.status(500).send({ message: "Internal Server Error" });
   }
 };
+
 
 export { HandleNewAdmission, HandleGetBranchParents, HandleGetStudentData };
