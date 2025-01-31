@@ -49,7 +49,14 @@ export const saveUploadedFiles = async (file, folder) => {
   const fileName = `${Date.now()}-${file.filename}`;
   const filePath = join(uploadDir, fileName);
 
-  // Save the file to disk
-  await fs.promises.writeFile(filePath, await file.toBuffer()); // Assuming `file.toBuffer()` exists in your environment
+  // Save the file to disk using a stream
+  const stream = fs.createWriteStream(filePath);
+  file.pipe(stream);  // Pipe file stream to disk
+  await new Promise((resolve, reject) => {
+    stream.on('finish', resolve); // Resolve when the file is finished
+    stream.on('error', reject);   // Reject on stream error
+  });
+
   return filePath; // Return the file path where it is saved
 };
+
