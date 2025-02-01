@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,29 +13,23 @@ model AdminSchema {
   name     String
   email    String   @unique
   phone    String
-  password String
   picture  String   @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
+  password String
   class    Branch[]
-  Roles    Roles[]
 }
 
 model Roles {
-  id       Int         @id @default(autoincrement())
+  id       Int    @id @default(autoincrement())
   roleName String
   username String
   password String
   adminId  Int
-  admin    AdminSchema @relation(fields: [adminId], references: [id])
-
-  branchId   Int
-  branch     Branch       @relation(fields: [branchId], references: [id])
-  Permission Permission[] @relation("RolePermissions")
+  branchId Int
 }
 
 model Permission {
-  id    Int     @id @default(autoincrement())
-  name  String
-  roles Roles[] @relation("RolePermissions")
+  id   Int    @id @default(autoincrement())
+  name String
 }
 
 model Branch {
@@ -52,18 +40,20 @@ model Branch {
   admin   AdminSchema @relation(fields: [adminId], references: [id])
   classes Class[]
   Parent  Parent[]
-  Roles   Roles[]
 
   @@unique([name, address])
+  @@index([adminId], map: "Branch_adminId_fkey")
 }
 
 model Class {
   id        Int       @id @default(autoincrement())
-  className String    @unique
   branchId  Int
+  className String    @unique
   branch    Branch    @relation(fields: [branchId], references: [id])
   grades    Grade[]
   students  Student[]
+
+  @@index([branchId], map: "Class_branchId_fkey")
 }
 
 model Grade {
@@ -75,56 +65,65 @@ model Grade {
   Student         Student[]
 
   @@unique([gradeLetter, classId])
+  @@index([classId], map: "Grade_classId_fkey")
 }
 
 model Parent {
   id           Int       @id @default(autoincrement())
-  firstName    String
-  lastName     String
-  cnic         String
-  occupation   String
-  companyName  String
-  salary       Int
   email        String    @unique
   phone        String
-  houseNumber  String
-  buildingName String
+  branchId     Int
   area         String
   block        String
+  buildingName String
   city         String
+  cnic         String
+  companyName  String
+  firstName    String
+  houseNumber  String
+  lastName     String
+  occupation   String
+  salary       Int
   picture      String?
-  students     Student[]
-  branchId     Int
   branch       Branch    @relation(fields: [branchId], references: [id])
+  students     Student[]
+
+  @@index([branchId], map: "Parent_branchId_fkey")
 }
 
 model Student {
   id                  Int        @id @default(autoincrement())
+  age                 Int
+  parentId            Int
+  classId             Int
+  dob                 String
   firstName           String
+  gender              String
+  hasSiblingsEnrolled Boolean    @default(false)
   lastName            String
+  noOfSibling         Int
   prevClass           String?
   prevSchool          String?
-  age                 Int
-  dob                 String
-  gender              String
-  parentId            Int
-  parent              Parent     @relation(fields: [parentId], references: [id])
-  classId             Int
-  class               Class      @relation(fields: [classId], references: [id])
   gradeId             Int
-  grade               Grade      @relation(fields: [gradeId], references: [id])
-  noOfSibling         Int
-  hasSiblingsEnrolled Boolean    @default(false)
-  FeeCard             FeeCard[]
   picture             String?
   Documents           Document[]
+  FeeCard             FeeCard[]
+  class               Class      @relation(fields: [classId], references: [id])
+  grade               Grade      @relation(fields: [gradeId], references: [id])
+  parent              Parent     @relation(fields: [parentId], references: [id])
+
+  @@index([classId], map: "Student_classId_fkey")
+  @@index([gradeId], map: "Student_gradeId_fkey")
+  @@index([parentId], map: "Student_parentId_fkey")
 }
 
 model Document {
   id        Int     @id @default(autoincrement())
   studentId Int
+  fileUrl   String
   student   Student @relation(fields: [studentId], references: [id])
-  fileUrl   String // URL of the uploaded file
+
+  @@index([studentId], map: "Document_studentId_fkey")
 }
 
 model FeeCard {
@@ -132,11 +131,8 @@ model FeeCard {
   studentId Int
   student   Student   @relation(fields: [studentId], references: [id])
   items     FeeItem[]
-}
 
-enum PaymentType {
-  ONE_TIME
-  RECURRING
+  @@index([studentId], map: "FeeCard_studentId_fkey")
 }
 
 model FeeItem {
@@ -144,7 +140,9 @@ model FeeItem {
   feeType     String
   amount      Int
   feeCardId   Int
-  paymentType String
   dueDate     String
+  paymentType String
   feeCard     FeeCard @relation(fields: [feeCardId], references: [id])
+
+  @@index([feeCardId], map: "FeeItem_feeCardId_fkey")
 }
