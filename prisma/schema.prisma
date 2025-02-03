@@ -125,7 +125,7 @@ model Document {
   id        Int     @id @default(autoincrement())
   studentId Int
   student   Student @relation(fields: [studentId], references: [id])
-  fileUrl   String // URL of the uploaded file
+  fileUrl   String 
 }
 
 model FeeCard {
