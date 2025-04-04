@@ -3,6 +3,7 @@ import { authRoutes } from "./AuthRoutes.js";
 import { branchRoutes } from "./BranchRoutes.js";
 import { ClassRoutes } from "./ClassRoutes.js";
 import { ParentRoutes } from "./ParentRoutes.js";
+import { PolicyRoutes } from "./PolicyRoutes.js";
 
 const prefix = "/api";
 
@@ -16,4 +17,5 @@ export const registerRoutes = async fastify => {
   fastify.register(branchRoutes, { prefix: prefix.concat("/branch") });
   fastify.register(ClassRoutes, { prefix: prefix.concat("/class") });
   fastify.register(ParentRoutes, { prefix: prefix.concat("/admission") });
+  fastify.register(PolicyRoutes, { prefix: prefix.concat("/policy") });
 };

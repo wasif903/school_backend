@@ -15,14 +15,15 @@ datasource db {
 }
 
 model AdminSchema {
-  id       Int      @id @default(autoincrement())
-  name     String
-  email    String   @unique
-  phone    String
-  password String
-  picture  String   @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
-  class    Branch[]
-  Roles    Roles[]
+  id              Int               @id @default(autoincrement())
+  name            String
+  email           String            @unique
+  phone           String
+  password        String
+  picture         String            @default("https://res.cloudinary.com/dhuhpslek/image/upload/fl_preserve_transparency/v1712595866/profile_demo_image_g57r6t.jpg?_s=public-apps")
+  class           Branch[]
+  Roles           Roles[]
+  DeductionPolicy DeductionPolicy[]
 }
 
 model Roles {
@@ -33,10 +34,10 @@ model Roles {
   adminId  Int
   admin    AdminSchema @relation(fields: [adminId], references: [id])
 
-  branchId   Int
-  branch     Branch       @relation(fields: [branchId], references: [id])
-  permissionId  Int 
-  Permission Permission @relation(fields: [permissionId], references: [id])
+  branchId     Int
+  branch       Branch     @relation(fields: [branchId], references: [id])
+  permissionId Int
+  Permission   Permission @relation(fields: [permissionId], references: [id])
 }
 
 model Permission {
@@ -46,14 +47,15 @@ model Permission {
 }
 
 model Branch {
-  id      Int         @id @default(autoincrement())
-  name    String
-  address String
-  adminId Int
-  admin   AdminSchema @relation(fields: [adminId], references: [id])
-  classes Class[]
-  Parent  Parent[]
-  Roles   Roles[]
+  id              Int               @id @default(autoincrement())
+  name            String
+  address         String
+  adminId         Int
+  admin           AdminSchema       @relation(fields: [adminId], references: [id])
+  classes         Class[]
+  Parent          Parent[]
+  Roles           Roles[]
+  DeductionPolicy DeductionPolicy[]
 
   @@unique([name, address])
 }
@@ -125,7 +127,7 @@ model Document {
   id        Int     @id @default(autoincrement())
   studentId Int
   student   Student @relation(fields: [studentId], references: [id])
-  fileUrl   String 
+  fileUrl   String
 }
 
 model FeeCard {
@@ -148,4 +150,160 @@ model FeeItem {
   paymentType String
   dueDate     String
   feeCard     FeeCard @relation(fields: [feeCardId], references: [id])
+}
+
+// model Policy {
+//   id                  Int        @id @default(autoincrement())
+//   policyName          String
+//   policyType          String
+//   policyDescription   String?
+//   deductionAmountType AmountType
+//   applicableType      String
+//   deductedType        String
+//   selectedAllowance   String
+//   chKSalary           Boolean
+//   chKOther            Boolean
+//   chKHour             Boolean
+//   chKMint             Boolean
+//   chKSpecificTime     Boolean
+//   deductionAmount     Int
+//   validFrom           String
+//   validTo             String
+//   gracePeriod         Int
+//   lateCount           Int
+//   startTime           Json
+//   endTime             Json
+//   graceTime           Json
+//   exceptions          String
+//   chkSpecificEvent    String
+//   selectedClass       String
+//   aplicableClass      String
+//   aplicableTeachers   String
+//   studentCheck        Boolean
+//   sectionCheck        Boolean
+//   staffCheck          Boolean
+//   aplicableStaff      String
+//   selectedStaff       String
+//   aplicableHr         String
+//   aplicableFinance    String
+//   selectedTeacher     String
+//   selectedHr          String
+//   selectedFinance     String
+//   aplicableSection    String
+//   selectedSection     String
+//   remarks             String
+//   lastUpdatedBy       String
+//   lastUpdatedDate     String
+// }
+
+// model Events {
+//   id               Int    @id @default(autoincrement())
+//   eventName        String
+//   eventDescription String
+// }
+
+// model ExceptionsList {
+//   id               Int    @id @default(autoincrement())
+//   exceptionType    String
+//   exceptionDetails String
+// }
+
+// enum AmountType {
+//   fixed
+//   Percentage
+// }
+
+model DeductionPolicy {
+  id                  Int        @id @default(autoincrement())
+  policyName          String
+  policyType          String
+  policyDescription   String?
+  deductionAmountType AmountType
+  applicableType      String
+  deductedType        String
+  selectedAllowance   String
+  chKSalary           Boolean
+  chKOther            Boolean
+  chKHour             Boolean
+  chKMint             Boolean
+  chKSpecificTime     Boolean
+  deductionAmount     Int
+  validFrom           String
+  validTo             String
+  gracePeriod         Int
+  lateCount           Int
+  startTime           Json
+  endTime             Json
+  graceTime           Json
+  exceptions          String
+  chkSpecificEvent    String
+  selectedClass       String
+  aplicableClass      String
+  aplicableTeachers   String
+  studentCheck        Boolean
+  sectionCheck        Boolean
+  staffCheck          Boolean
+  aplicableStaff      String
+  selectedStaff       String
+  aplicableHr         String
+  aplicableFinance    String
+  selectedTeacher     String
+  selectedHr          String
+  selectedFinance     String
+  aplicableSection    String
+  selectedSection     String
+  remarks             String
+  lastUpdatedBy       String
+  lastUpdatedDate     String
+
+  // Relations
+  events         PolicyEvent[]
+  exceptionsList PolicyException[]
+  Branch         Branch?           @relation(fields: [branchId], references: [id])
+  branchId       Int?
+  Admin          AdminSchema       @relation(fields: [adminId], references: [id])
+  adminId        Int
+}
+
+model Events {
+  id               Int    @id @default(autoincrement())
+  eventName        String
+  eventDescription String
+
+  // Reverse relation
+  policies PolicyEvent[]
+}
+
+model ExceptionsList {
+  id               Int    @id @default(autoincrement())
+  exceptionType    String
+  exceptionDetails String
+
+  // Reverse relation
+  policies PolicyException[]
+}
+
+model PolicyEvent {
+  policyId Int
+  eventId  Int
+
+  DeductionPolicy DeductionPolicy @relation(fields: [policyId], references: [id])
+  event           Events          @relation(fields: [eventId], references: [id])
+
+  @@id([policyId, eventId])
+}
+
+model PolicyException {
+  policyId    Int
+  exceptionId Int
+
+  DeductionPolicy DeductionPolicy @relation(fields: [policyId], references: [id])
+  exception       ExceptionsList  @relation(fields: [exceptionId], references: [id])
+
+  @@id([policyId, exceptionId])
+}
+
+enum AmountType {
+  fixed
+  Percentage
 }
