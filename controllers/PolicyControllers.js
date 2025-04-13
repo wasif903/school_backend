@@ -1,5 +1,136 @@
 import prisma from "../utils/prisma.js";
 
+// const HandleCreatePolicy = async (req, reply) => {
+//   try {
+//     const { branchId, adminId } = req.params;
+
+//     const {
+//       policyName,
+//       policyType,
+//       policyDescription,
+//       deductionAmountType,
+//       applicableType,
+//       deductedType,
+//       selectedAllowance,
+//       chKSalary,
+//       chKOther,
+//       chKHour,
+//       chKMint,
+//       chKSpecificTime,
+//       deductionAmount,
+//       validFrom,
+//       validTo,
+//       gracePeriod,
+//       lateCount,
+//       startTime,
+//       endTime,
+//       graceTime,
+//       exceptions, // string
+//       chkSpecificEvent,
+//       selectedClass,
+//       aplicableClass,
+//       aplicableTeachers,
+//       studentCheck,
+//       sectionCheck,
+//       staffCheck,
+//       aplicableStaff,
+//       selectedStaff,
+//       aplicableHr,
+//       aplicableFinance,
+//       selectedTeacher,
+//       selectedHr,
+//       selectedFinance,
+//       aplicableSection,
+//       selectedSection,
+//       remarks,
+//       lastUpdatedBy,
+//       lastUpdatedDate,
+//       events, // array of event IDs
+//       exceptionsList // array of exception IDs
+//     } = req.body;
+
+//     const policy = await prisma.policy.create({
+//       data: {
+//         policyName,
+//         policyType,
+//         policyDescription,
+//         deductionAmountType,
+//         applicableType,
+//         deductedType,
+//         selectedAllowance,
+//         chKSalary,
+//         chKOther,
+//         chKHour,
+//         chKMint,
+//         chKSpecificTime,
+//         deductionAmount,
+//         validFrom,
+//         validTo,
+//         gracePeriod,
+//         lateCount,
+//         startTime,
+//         endTime,
+//         graceTime,
+//         exceptions,
+//         chkSpecificEvent,
+//         selectedClass,
+//         aplicableClass,
+//         aplicableTeachers,
+//         studentCheck,
+//         sectionCheck,
+//         staffCheck,
+//         aplicableStaff,
+//         selectedStaff,
+//         aplicableHr,
+//         aplicableFinance,
+//         selectedTeacher,
+//         selectedHr,
+//         selectedFinance,
+//         aplicableSection,
+//         selectedSection,
+//         remarks,
+//         lastUpdatedBy,
+//         lastUpdatedDate,
+//         branchId: {
+//           connect: { id: branchId }
+//         },
+//         adminId: {
+//           connect: { id: adminId }
+//         },
+//         // Connect many-to-many events
+//         events: {
+//           create: events.map(eventId => ({
+//             event: {
+//               connect: { id: eventId }
+//             }
+//           }))
+//         },
+//         // Connect many-to-many exceptions
+//         exceptionsList: {
+//           create: exceptionsList.map(exceptionId => ({
+//             exception: {
+//               connect: { id: exceptionId }
+//             }
+//           }))
+//         }
+//       },
+//       include: {
+//         events: true,
+//         exceptionsList: true
+//       }
+//     });
+
+//     reply.status(201).send(policy);
+//   } catch (error) {
+//     console.error("Error creating policy:", error);
+//     reply
+//       .status(500)
+//       .send({ error: "An error occurred while creating the policy" });
+//   }
+// };
+
+
+
 const HandleCreatePolicy = async (req, reply) => {
   try {
     const { branchId, adminId } = req.params;
@@ -25,7 +156,7 @@ const HandleCreatePolicy = async (req, reply) => {
       startTime,
       endTime,
       graceTime,
-      exceptions, // string
+      exceptions,
       chkSpecificEvent,
       selectedClass,
       aplicableClass,
@@ -45,11 +176,11 @@ const HandleCreatePolicy = async (req, reply) => {
       remarks,
       lastUpdatedBy,
       lastUpdatedDate,
-      events, // array of event IDs
-      exceptionsList // array of exception IDs
+      eventsList,        // array of { eventName, eventDescription }
+      exceptionsList     // array of { exceptionType, exceptionDetails }
     } = req.body;
 
-    const policy = await prisma.policy.create({
+    const policy = await prisma.deductionPolicy.create({
       data: {
         policyName,
         policyType,
@@ -91,42 +222,266 @@ const HandleCreatePolicy = async (req, reply) => {
         remarks,
         lastUpdatedBy,
         lastUpdatedDate,
-        branchId: {
-          connect: { id: branchId }
-        },
-        adminId: {
-          connect: { id: adminId }
-        },
-        // Connect many-to-many events
+        branchId: Number(branchId),
+        adminId: Number(adminId),
+
+        // Connect or create EVENTS
         events: {
-          create: events.map(eventId => ({
+          create: eventsList.map((event) => ({
             event: {
-              connect: { id: eventId }
+              connectOrCreate: {
+                where: { eventName: event.eventName },
+                create: {
+                  eventName: event.eventName,
+                  eventDescription: event.eventDescription,
+                }
+              }
             }
           }))
         },
-        // Connect many-to-many exceptions
+
+        // Connect or create EXCEPTIONS
         exceptionsList: {
-          create: exceptionsList.map(exceptionId => ({
+          create: exceptionsList.map((exception) => ({
             exception: {
-              connect: { id: exceptionId }
+              connectOrCreate: {
+                where: { exceptionType: exception.exceptionType },
+                create: {
+                  exceptionType: exception.exceptionType,
+                  leaveType: exception.leaveType,
+                  limit: exception.limit,
+                  exceptionDetails: exception.exceptionDetails,
+                }
+              }
             }
           }))
         }
       },
       include: {
-        events: true,
-        exceptionsList: true
+        events: {
+          include: {
+            event: true
+          }
+        },
+        exceptionsList: {
+          include: {
+            exception: true
+          }
+        }
       }
     });
 
     reply.status(201).send(policy);
   } catch (error) {
     console.error("Error creating policy:", error);
-    reply
-      .status(500)
-      .send({ error: "An error occurred while creating the policy" });
+    reply.status(500).send({
+      error: "An error occurred while creating the policy",
+      details: error.message
+    });
   }
 };
 
-export { HandleCreatePolicy };
+
+
+
+// post/create exceptions
+const HandleCreateException = async (req, reply) => {
+  try {
+
+    const { exceptionType, leaveType, limit, exceptionDetails } = req.body;
+    const newException = await prisma.exceptionsList.create({
+      data: {
+        exceptionType,
+        leaveType,
+        limit,
+        exceptionDetails,
+      }
+    })
+    reply.status(201).send(newException);
+  } catch (error) {
+    console.log(error)
+    reply.status(500).send({ error: "Failed to create exception" });
+  }
+}
+
+// post/create events
+const HandleCreateEvents = async (req, reply) => {
+  try {
+    const { eventName, eventDescription } = req.body;
+
+    const newEvent = await prisma.events.create({
+      data: {
+        eventName,
+        eventDescription,
+      }
+    })
+    reply.status(201).send(newEvent);
+  } catch (error) {
+    console.log(error);
+    reply.status(500).send({ error: "Failed to create event" });
+  }
+}
+
+// get exceptions
+const HandleGetExceptions = async (req, reply) => {
+  try {
+    const getExceptions = await prisma.exceptionsList.findMany();
+    reply.status(200).send(getExceptions);
+  } catch (error) {
+    console.log(error);
+    reply.status(500).send({ error: "Failed to get exceptions" });
+  }
+}
+
+// get events
+const HandleGetEvents = async (req, reply) => {
+  try {
+    const getEvents = await prisma.events.findMany();
+    reply.status(200).send(getEvents);
+  } catch (error) {
+    console.log(error)
+    reply.status(500).send({ error: "Failed to get events" });
+  }
+}
+
+
+export { HandleCreatePolicy, HandleCreateException, HandleCreateEvents, HandleGetExceptions, HandleGetEvents };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// const HandleCreatePolicy = async (req, reply) => {
+//   try {
+//     const { branchId, adminId } = req.params;
+//     const {
+//       policyName,
+//       policyType,
+//       policyDescription,
+//       deductionAmountType,
+//       applicableType,
+//       deductedType,
+//       selectedAllowance,
+//       chKSalary,
+//       chKOther,
+//       chKHour,
+//       chKMint,
+//       chKSpecificTime,
+//       deductionAmount,
+//       validFrom,
+//       validTo,
+//       gracePeriod,
+//       lateCount,
+//       startTime,
+//       endTime,
+//       graceTime,
+//       exceptions,
+//       chkSpecificEvent,
+//       selectedClass,
+//       aplicableClass,
+//       aplicableTeachers,
+//       studentCheck,
+//       sectionCheck,
+//       staffCheck,
+//       aplicableStaff,
+//       selectedStaff,
+//       aplicableHr,
+//       aplicableFinance,
+//       selectedTeacher,
+//       selectedHr,
+//       selectedFinance,
+//       aplicableSection,
+//       selectedSection,
+//       remarks,
+//       lastUpdatedBy,
+//       lastUpdatedDate,
+//       events,
+//       exceptionsList,
+//     } = req.body;
+
+//     const policy = await prisma.deductionPolicy.create({
+//       data: {
+//         policyName,
+//         policyType,
+//         policyDescription,
+//         deductionAmountType,
+//         applicableType,
+//         deductedType,
+//         selectedAllowance,
+//         chKSalary,
+//         chKOther,
+//         chKHour,
+//         chKMint,
+//         chKSpecificTime,
+//         deductionAmount,
+//         validFrom,
+//         validTo,
+//         gracePeriod,
+//         lateCount,
+//         startTime,
+//         endTime,
+//         graceTime,
+//         exceptions,
+//         chkSpecificEvent,
+//         selectedClass,
+//         aplicableClass,
+//         aplicableTeachers,
+//         studentCheck,
+//         sectionCheck,
+//         staffCheck,
+//         aplicableStaff,
+//         selectedStaff,
+//         aplicableHr,
+//         aplicableFinance,
+//         selectedTeacher,
+//         selectedHr,
+//         selectedFinance,
+//         aplicableSection,
+//         selectedSection,
+//         remarks,
+//         lastUpdatedBy,
+//         lastUpdatedDate,
+//         branchId: parseInt(branchId),
+//         adminId: parseInt(adminId),
+//         events: {
+//           create: events.map((eventId) => ({
+//             event: {
+//               connect: { id: eventId },
+//             },
+//           })),
+//         },
+//         exceptionsList: {
+//           create: exceptionsList.map((exceptionId) => ({
+//             exception: {
+//               connect: { id: exceptionId },
+//             },
+//           })),
+//         },
+//       },
+//       include: {
+//         events: true,
+//         exceptionsList: true,
+//       },
+//     });
+
+//     reply.status(201).send(policy);
+//   } catch (error) {
+//     console.error("Error creating policy:", error);
+//     reply
+//       .status(500)
+//       .send({ error: "An error occurred while creating the policy" });
+//   }
+// };

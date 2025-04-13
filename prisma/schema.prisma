@@ -267,7 +267,7 @@ model DeductionPolicy {
 
 model Events {
   id               Int    @id @default(autoincrement())
-  eventName        String
+  eventName        String @unique
   eventDescription String
 
   // Reverse relation
@@ -276,7 +276,9 @@ model Events {
 
 model ExceptionsList {
   id               Int    @id @default(autoincrement())
-  exceptionType    String
+  exceptionType    String @unique
+  leaveType        String?
+  limit            Int?
   exceptionDetails String
 
   // Reverse relation
