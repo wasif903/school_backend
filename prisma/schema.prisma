@@ -235,8 +235,10 @@ model DeductionPolicy {
   startTime           Json
   endTime             Json
   graceTime           Json
-  exceptions          String
-  chkSpecificEvent    String
+
+  exceptions          Boolean
+  chkSpecificEvent    Boolean
+  
   selectedClass       String
   aplicableClass      String
   aplicableTeachers   String
