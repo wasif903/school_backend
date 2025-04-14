@@ -215,7 +215,7 @@ model FeeItem {
 
 model DeductionPolicy {
   id                  Int        @id @default(autoincrement())
-  policyName          String
+  policyName          String     @unique
   policyType          String
   policyDescription   String?
   deductionAmountType AmountType
@@ -236,27 +236,27 @@ model DeductionPolicy {
   endTime             Json
   graceTime           Json
 
-  exceptions          Boolean
-  chkSpecificEvent    Boolean
-  
-  selectedClass       String
-  aplicableClass      String
-  aplicableTeachers   String
-  studentCheck        Boolean
-  sectionCheck        Boolean
-  staffCheck          Boolean
-  aplicableStaff      String
-  selectedStaff       String
-  aplicableHr         String
-  aplicableFinance    String
-  selectedTeacher     String
-  selectedHr          String
-  selectedFinance     String
-  aplicableSection    String
-  selectedSection     String
-  remarks             String
-  lastUpdatedBy       String
-  lastUpdatedDate     String
+  exceptions       Boolean
+  chkSpecificEvent Boolean
+
+  selectedClass     String
+  aplicableClass    String
+  aplicableTeachers String
+  studentCheck      Boolean
+  sectionCheck      Boolean
+  staffCheck        Boolean
+  aplicableStaff    String
+  selectedStaff     String
+  aplicableHr       String
+  aplicableFinance  String
+  selectedTeacher   String
+  selectedHr        String
+  selectedFinance   String
+  aplicableSection  String
+  selectedSection   String
+  remarks           String
+  lastUpdatedBy     String
+  lastUpdatedDate   String
 
   // Relations
   events         PolicyEvent[]
@@ -277,8 +277,8 @@ model Events {
 }
 
 model ExceptionsList {
-  id               Int    @id @default(autoincrement())
-  exceptionType    String @unique
+  id               Int     @id @default(autoincrement())
+  exceptionType    String  @unique
   leaveType        String?
   limit            Int?
   exceptionDetails String
