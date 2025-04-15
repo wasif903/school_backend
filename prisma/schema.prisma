@@ -257,6 +257,9 @@ model DeductionPolicy {
   remarks           String
   lastUpdatedBy     String
   lastUpdatedDate   String
+  status            PolicyStatus @default(Active)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 
   // Relations
   events         PolicyEvent[]
@@ -265,6 +268,9 @@ model DeductionPolicy {
   branchId       Int?
   Admin          AdminSchema       @relation(fields: [adminId], references: [id])
   adminId        Int
+
+  @@index([policyName])
+  @@index([policyDescription])
 }
 
 model Events {
@@ -310,4 +316,9 @@ model PolicyException {
 enum AmountType {
   fixed
   Percentage
+}
+
+enum PolicyStatus {
+  Active
+  Inactive
 }

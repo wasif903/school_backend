@@ -1,4 +1,5 @@
 import prisma from "../utils/prisma.js";
+import { SendResponse } from "../utils/sendResponse.js";
 
 // create deduction policy
 const HandleCreatePolicy = async (req, reply) => {
@@ -6,27 +7,23 @@ const HandleCreatePolicy = async (req, reply) => {
     const { branchId, adminId } = req.params;
     const {
       policyType,
-      eventsList,    // Make sure this is coming from frontend
+      eventsList, // Make sure this is coming from frontend
       exceptionsList,
       ...rest
     } = req.body;
 
-    if (!req.body.policyName || req.body.policyName.trim() === '') {
-      return reply.status(400).send({
-        message: "Policy name cannot be empty."
-      });
+    if (!req.body.policyName || req.body.policyName.trim() === "") {
+      SendResponse(reply, 400, false, "Policy name cannot be empty.");
     }
 
     const policyExists = await prisma.deductionPolicy.findFirst({
       where: {
         policyName: req.body.policyName,
-      }
+      },
     });
 
     if (policyExists) {
-      return reply.status(400).send({
-        message: "Policy already exists."
-      });
+      SendResponse(reply, 400, false, "Policy already exists.");
     }
 
     // const policy = await prisma.deductionPolicy.create({
@@ -46,10 +43,10 @@ const HandleCreatePolicy = async (req, reply) => {
                 create: {
                   eventName: event.eventName,
                   eventDescription: event.eventDescription,
-                }
-              }
-            }
-          }))
+                },
+              },
+            },
+          })),
         },
 
         // Connect or create EXCEPTIONS
@@ -63,36 +60,177 @@ const HandleCreatePolicy = async (req, reply) => {
                   leaveType: exception.leaveType,
                   limit: exception.limit,
                   exceptionDetails: exception.exceptionDetails,
-                }
-              }
-            }
-          }))
-        }
+                },
+              },
+            },
+          })),
+        },
       },
       include: {
         events: {
           include: {
-            event: true
-          }
+            event: true,
+          },
         },
         exceptionsList: {
           include: {
-            exception: true
-          }
-        }
-      }
+            exception: true,
+          },
+        },
+      },
     });
 
-    reply.status(201).send({ message: "Policy created successfully!" });
+    SendResponse(reply, 201, true, "Policy created successfully!");
   } catch (error) {
-    console.error("Error creating policy:", error);
-    reply.status(500).send({
-      error: "An error occurred while creating the policy",
-      details: error.message,
-    });
+    // console.error("Error creating policy:", error);
+    SendResponse(
+      reply,
+      500,
+      false,
+      "An error occurred while creating the policy"
+    );
   }
 };
 
+// get all policies
+const HandleGetPolicies = async (req, reply) => {
+  try {
+    const {
+      limit = 10,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      policyType,
+      cursor,
+      page = 1 // for UI display
+    } = req.query;
+
+    const take = Number(limit);
+    const currentPage = Number(page);
+
+    // Build where clause
+    const where = {};
+    if (search) {
+      where.OR = [
+        { policyName: { contains: search } },
+        { policyDescription: { contains: search } }
+      ];
+    }
+    if (policyType) {
+      where.policyType = policyType;
+    }
+
+    // Get total count (for pagination UI)
+    const totalItems = await prisma.deductionPolicy.count({ where });
+    const totalPages = Math.ceil(totalItems / take);
+
+    // Prepare cursor if provided
+    const cursorObj = cursor ? { id: Number(cursor) } : undefined;
+
+    // Get paginated data
+    const policies = await prisma.deductionPolicy.findMany({
+      where,
+      take: take + 1,
+      ...(cursorObj && { cursor: cursorObj, skip: 1 }),
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      include: {
+        events: {
+          select: {
+            event: true,
+          }
+        },
+        exceptionsList: {
+          select: {
+            exception: true,
+          }
+        }
+      },
+    });
+
+    const hasMore = policies.length > take;
+    const nextCursor = hasMore ? policies[policies.length - 1].id : null;
+
+    if (hasMore) policies.pop();
+
+    SendResponse(reply, 200, true, "Policies retrieved successfully", {
+      data: policies,
+      pagination: {
+        currentPage,
+        totalPages,
+        totalItems,
+        itemsPerPage: take,
+        nextCursor,
+        hasMore
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching policies:", error);
+    SendResponse(reply, 500, false, "Failed to retrieve policies");
+  }
+};
+
+
+// const HandleGetPolicies = async (req, reply) => {
+//   try {
+//     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', policyType } = req.query;
+//     const skip = (page - 1) * limit;
+
+//     // Build where clause for filtering
+//     const where = {};
+//     if (search) {
+//       where.OR = [
+//         { policyName: { contains: search } },
+//         { policyDescription: { contains: search } }
+//       ];
+//     }
+//     if (policyType) {
+//       where.policyType = policyType;
+//     }
+
+//     // Get total count for pagination
+//     const totalCount = await prisma.deductionPolicy.count({ where });
+//     const totalPages = Math.ceil(totalCount / limit);
+
+//     // Get policies with pagination, sorting and filtering
+//     const policies = await prisma.deductionPolicy.findMany({
+//       where,
+//       skip: Number(skip),
+//       take: Number(limit),
+//       orderBy: {
+//         [sortBy]: sortOrder
+//       },
+//       include: {
+//         events: {
+//           include: {
+//             event: true,
+//           },
+//         },
+//         exceptionsList: {
+//           include: {
+//             exception: true,
+//           },
+//         },
+//       },
+//     });
+
+//     SendResponse(reply, 200, true, "Policies retrieved successfully", {
+//       data: policies,
+//       pagination: {
+//         currentPage: Number(page),
+//         totalPages,
+//         totalItems: totalCount,
+//         itemsPerPage: Number(limit)
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Error fetching policies:", error);
+//     SendResponse(reply, 500, false, "Failed to retrieve policies");
+//   }
+// };
+
+export { HandleCreatePolicy, HandleGetPolicies };
 
 // post/create exceptions
 // const HandleCreateException = async (req, reply) => {
@@ -152,152 +290,3 @@ const HandleCreatePolicy = async (req, reply) => {
 //     reply.status(500).send({ error: "Failed to get events" });
 //   }
 // }
-
-
-export { HandleCreatePolicy };
-
-
-// HandleCreateException, HandleCreateEvents, HandleGetExceptions, HandleGetEvents
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const HandleCreatePolicy = async (req, reply) => {
-//   try {
-//     const { branchId, adminId } = req.params;
-
-//     const {
-//       policyName,
-//       policyType,
-//       policyDescription,
-//       deductionAmountType,
-//       applicableType,
-//       deductedType,
-//       selectedAllowance,
-//       chKSalary,
-//       chKOther,
-//       chKHour,
-//       chKMint,
-//       chKSpecificTime,
-//       deductionAmount,
-//       validFrom,
-//       validTo,
-//       gracePeriod,
-//       lateCount,
-//       startTime,
-//       endTime,
-//       graceTime,
-//       exceptions, // string
-//       chkSpecificEvent,
-//       selectedClass,
-//       aplicableClass,
-//       aplicableTeachers,
-//       studentCheck,
-//       sectionCheck,
-//       staffCheck,
-//       aplicableStaff,
-//       selectedStaff,
-//       aplicableHr,
-//       aplicableFinance,
-//       selectedTeacher,
-//       selectedHr,
-//       selectedFinance,
-//       aplicableSection,
-//       selectedSection,
-//       remarks,
-//       lastUpdatedBy,
-//       lastUpdatedDate,
-//       events, // array of event IDs
-//       exceptionsList // array of exception IDs
-//     } = req.body;
-
-//     const policy = await prisma.policy.create({
-//       data: {
-//         policyName,
-//         policyType,
-//         policyDescription,
-//         deductionAmountType,
-//         applicableType,
-//         deductedType,
-//         selectedAllowance,
-//         chKSalary,
-//         chKOther,
-//         chKHour,
-//         chKMint,
-//         chKSpecificTime,
-//         deductionAmount,
-//         validFrom,
-//         validTo,
-//         gracePeriod,
-//         lateCount,
-//         startTime,
-//         endTime,
-//         graceTime,
-//         exceptions,
-//         chkSpecificEvent,
-//         selectedClass,
-//         aplicableClass,
-//         aplicableTeachers,
-//         studentCheck,
-//         sectionCheck,
-//         staffCheck,
-//         aplicableStaff,
-//         selectedStaff,
-//         aplicableHr,
-//         aplicableFinance,
-//         selectedTeacher,
-//         selectedHr,
-//         selectedFinance,
-//         aplicableSection,
-//         selectedSection,
-//         remarks,
-//         lastUpdatedBy,
-//         lastUpdatedDate,
-//         branchId: {
-//           connect: { id: branchId }
-//         },
-//         adminId: {
-//           connect: { id: adminId }
-//         },
-//         // Connect many-to-many events
-//         events: {
-//           create: events.map(eventId => ({
-//             event: {
-//               connect: { id: eventId }
-//             }
-//           }))
-//         },
-//         // Connect many-to-many exceptions
-//         exceptionsList: {
-//           create: exceptionsList.map(exceptionId => ({
-//             exception: {
-//               connect: { id: exceptionId }
-//             }
-//           }))
-//         }
-//       },
-//       include: {
-//         events: true,
-//         exceptionsList: true
-//       }
-//     });
-
-//     reply.status(201).send(policy);
-//   } catch (error) {
-//     console.error("Error creating policy:", error);
-//     reply
-//       .status(500)
-//       .send({ error: "An error occurred while creating the policy" });
-//   }
-// };

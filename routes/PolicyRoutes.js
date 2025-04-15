@@ -1,7 +1,8 @@
-import { HandleCreatePolicy } from "../controllers/PolicyControllers.js";
+import { HandleCreatePolicy, HandleGetPolicies } from "../controllers/PolicyControllers.js";
 
 export const PolicyRoutes = async (fastify, options) => {
   // get apis
+  fastify.get("/get-policies", HandleGetPolicies)
   // fastify.get("/get-exceptions", HandleGetExceptions)
   // fastify.get("/get-events", HandleGetEvents)
 
