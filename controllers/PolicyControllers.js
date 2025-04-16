@@ -1,3 +1,4 @@
+import listHandler from "../utils/listHandler.js";
 import prisma from "../utils/prisma.js";
 import { SendResponse } from "../utils/sendResponse.js";
 
@@ -94,143 +95,42 @@ const HandleCreatePolicy = async (req, reply) => {
 
 // get all policies
 const HandleGetPolicies = async (req, reply) => {
-  try {
-    const {
-      limit = 10,
-      search,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      policyType,
-      cursor,
-      page = 1 // for UI display
-    } = req.query;
-
-    const take = Number(limit);
-    const currentPage = Number(page);
-
-    // Build where clause
-    const where = {};
-    if (search) {
-      where.OR = [
-        { policyName: { contains: search } },
-        { policyDescription: { contains: search } }
-      ];
-    }
-    if (policyType) {
-      where.policyType = policyType;
-    }
-
-    // Get total count (for pagination UI)
-    const totalItems = await prisma.deductionPolicy.count({ where });
-    const totalPages = Math.ceil(totalItems / take);
-
-    // Prepare cursor if provided
-    const cursorObj = cursor ? { id: Number(cursor) } : undefined;
-
-    // Get paginated data
-    const policies = await prisma.deductionPolicy.findMany({
-      where,
-      take: take + 1,
-      ...(cursorObj && { cursor: cursorObj, skip: 1 }),
-      orderBy: {
-        [sortBy]: sortOrder,
+  return listHandler({
+    prismaModel: prisma.deductionPolicy,
+    req,
+    reply,
+    searchableFields: ['policyName', 'policyDescription'],
+    filterFields: ['policyType'],
+    include: {
+      events: {
+        select: { event: true },
       },
-      include: {
-        events: {
-          select: {
-            event: true,
-          }
-        },
-        exceptionsList: {
-          select: {
-            exception: true,
-          }
-        }
-      },
-    });
-
-    const hasMore = policies.length > take;
-    const nextCursor = hasMore ? policies[policies.length - 1].id : null;
-
-    if (hasMore) policies.pop();
-
-    SendResponse(reply, 200, true, "Policies retrieved successfully", {
-      data: policies,
-      pagination: {
-        currentPage,
-        totalPages,
-        totalItems,
-        itemsPerPage: take,
-        nextCursor,
-        hasMore
+      exceptionsList: {
+        select: { exception: true },
       }
-    });
-  } catch (error) {
-    console.error("Error fetching policies:", error);
-    SendResponse(reply, 500, false, "Failed to retrieve policies");
-  }
+    },
+    defaultSortBy: 'createdAt',
+    defaultSortOrder: 'desc',
+    searchModeL: true,
+  });
 };
 
-
-// const HandleGetPolicies = async (req, reply) => {
-//   try {
-//     const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', policyType } = req.query;
-//     const skip = (page - 1) * limit;
-
-//     // Build where clause for filtering
-//     const where = {};
-//     if (search) {
-//       where.OR = [
-//         { policyName: { contains: search } },
-//         { policyDescription: { contains: search } }
-//       ];
-//     }
-//     if (policyType) {
-//       where.policyType = policyType;
-//     }
-
-//     // Get total count for pagination
-//     const totalCount = await prisma.deductionPolicy.count({ where });
-//     const totalPages = Math.ceil(totalCount / limit);
-
-//     // Get policies with pagination, sorting and filtering
-//     const policies = await prisma.deductionPolicy.findMany({
-//       where,
-//       skip: Number(skip),
-//       take: Number(limit),
-//       orderBy: {
-//         [sortBy]: sortOrder
-//       },
-//       include: {
-//         events: {
-//           include: {
-//             event: true,
-//           },
-//         },
-//         exceptionsList: {
-//           include: {
-//             exception: true,
-//           },
-//         },
-//       },
-//     });
-
-//     SendResponse(reply, 200, true, "Policies retrieved successfully", {
-//       data: policies,
-//       pagination: {
-//         currentPage: Number(page),
-//         totalPages,
-//         totalItems: totalCount,
-//         itemsPerPage: Number(limit)
-//       }
-//     });
-//   } catch (error) {
-//     console.error("Error fetching policies:", error);
-//     SendResponse(reply, 500, false, "Failed to retrieve policies");
-//   }
-// };
-
 export { HandleCreatePolicy, HandleGetPolicies };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // post/create exceptions
 // const HandleCreateException = async (req, reply) => {
