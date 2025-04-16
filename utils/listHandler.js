@@ -3,7 +3,7 @@ import { SendResponse } from "./sendResponse.js";
 // searchMode: true ho to pure search results laega (no pagination, all matches up to 1000).
 // searchMode: false ya na ho to normal pagination chalta rahega.
 
-// utils/listHandler.js
+// get data handler
 const listHandler = async ({
   prismaModel,
   req,
@@ -68,7 +68,11 @@ const listHandler = async ({
     });
 
     const hasMore = isSearchMode ? false : results.length > take;
-    const nextCursor = isSearchMode ? null : hasMore ? results[results.length - 1].id : null;
+    const nextCursor = isSearchMode
+      ? null
+      : hasMore
+      ? results[results.length - 1].id
+      : null;
     if (!isSearchMode && hasMore) results.pop();
 
     return SendResponse(reply, 200, true, "Data fetched successfully", {
@@ -91,84 +95,138 @@ const listHandler = async ({
   }
 };
 
-// const listHandler = async ({
-//   prismaModel,
-//   req,
-//   reply,
-//   searchableFields = [],
-//   filterFields = [],
-//   include = {},
-//   defaultSortBy = "createdAt",
-//   defaultSortOrder = "desc",
-// }) => {
-//   try {
-//     const {
-//       limit = 10,
-//       search,
-//       sortBy = defaultSortBy,
-//       sortOrder = defaultSortOrder,
-//       cursor,
-//       page = 1,
-//       ...filters
-//     } = req.query;
+// Agar req.params mein id mile to single delete.
+// Agar req.body.ids mein ek array mile to bulk delete.
 
-//     const take = Number(limit);
-//     const currentPage = Number(page);
+// delete data handler
+const deleteHandler = async ({
+  prismaModel,
+  req,
+  reply,
+  idParam = "id",
+  softDelete = false,
+  deletedField = "isDeleted",
+  checkOwnership = null, // Optional ownership function
+}) => {
+  try {
+    const { ids } = req.body;
+    const id = req.params[idParam];
 
-//     // Build dynamic where clause
-//     const where = {};
+    let deletedData;
 
-//     if (search && searchableFields.length > 0) {
-//       where.OR = searchableFields.map((field) => ({
-//         [field]: {
-//           contains: search,
-//         },
-//       }));
-//     }
+    // Ownership check for bulk
+    if (ids && Array.isArray(ids) && ids.length > 0) {
+      if (checkOwnership) {
+        const isAllowed = await checkOwnership(req.user, ids);
+        if (!isAllowed) {
+          return SendResponse(
+            reply,
+            403,
+            false,
+            "You are not authorized to delete these items"
+          );
+        }
+      }
 
-//     filterFields.forEach((field) => {
-//       if (filters[field]) {
-//         where[field] = filters[field];
-//       }
-//     });
+      if (softDelete) {
+        deletedData = await prismaModel.updateMany({
+          where: { id: { in: ids } },
+          data: { [deletedField]: true },
+        });
+      } else {
+        deletedData = await prismaModel.deleteMany({
+          where: { id: { in: ids } },
+        });
+      }
 
-//     const totalItems = await prismaModel.count({ where });
-//     const totalPages = Math.ceil(totalItems / take);
+      return SendResponse(
+        reply,
+        200,
+        true,
+        "Items deleted successfully",
+        deletedData
+      );
+    }
 
-//     const cursorObj = cursor ? { id: Number(cursor) } : undefined;
+    // Ownership check for single
+    if (id) {
+      if (checkOwnership) {
+        const isAllowed = await checkOwnership(req.user, [Number(id)]);
+        if (!isAllowed) {
+          return SendResponse(
+            reply,
+            403,
+            false,
+            "You are not authorized to delete this item"
+          );
+        }
+      }
 
-//     const results = await prismaModel.findMany({
-//       where,
-//       take: take + 1,
-//       ...(cursorObj && { cursor: cursorObj, skip: 1 }),
-//       orderBy: {
-//         [sortBy]: sortOrder,
-//       },
-//       include,
-//     });
+      if (softDelete) {
+        deletedData = await prismaModel.update({
+          where: { id: Number(id) },
+          data: { [deletedField]: true },
+        });
+      } else {
+        deletedData = await prismaModel.delete({
+          where: { id: Number(id) },
+        });
+      }
 
-//     const hasMore = results.length > take;
-//     const nextCursor = hasMore ? results[results.length - 1].id : null;
-//     if (hasMore) results.pop();
+      return SendResponse(
+        reply,
+        200,
+        true,
+        "Item deleted successfully",
+        deletedData
+      );
+    }
 
-//     return SendResponse(reply, 200, true, "Data fetched successfully", {
-//       results,
-//       pagination: {
-//         currentPage,
-//         totalPages,
-//         totalItems,
-//         itemsPerPage: take,
-//         nextCursor,
-//         hasMore,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Generic list error:", {
-//       error: error.message,
-//       query: req.query,
-//     });
-//     return SendResponse(reply, 500, false, "Failed to fetch list data");
-//   }
-// };
+    return SendResponse(
+      reply,
+      400,
+      false,
+      "No valid ID(s) provided for deletion"
+    );
+  } catch (error) {
+    console.error("Generic delete error:", {
+      message: error.message,
+      body: req.body,
+      params: req.params,
+    });
+    return SendResponse(
+      reply,
+      500,
+      false,
+      "Something went wrong while deleting"
+    );
+  }
+};
 
-export default listHandler;
+export default { listHandler, deleteHandler };
+
+// delete data handler example
+
+// Single delete
+// req.params = { id: "12" }
+// fastify.delete("/api/policy/:id", async (req, reply) => {
+//   return await deleteHandler({
+//     prismaModel: prisma.deductionPolicy,
+//     req,
+//     reply,
+// softDelete: true,
+//   });
+// });
+
+// // Bulk delete
+// req.body = {
+//   ids: [12, 15, 18]
+// }
+// fastify.delete("/api/policy", async (req, reply) => {
+//   return await deleteHandler({
+//     prismaModel: prisma.deductionPolicy,
+//     req,
+//     reply,
+// softDelete: true,
+//   });
+// });
